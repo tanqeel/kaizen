@@ -82,6 +82,12 @@ export default async function VoucherDetailPage({ params }: { params: Promise<{ 
         actions={
           <>
             <Badge variant={statusBadgeVariant(ds)}>{statusLabel(ds)}</Badge>
+            <Link
+              href={`/fees/${v.id}/challan`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              <Icon name="download" size={16} /> Challan
+            </Link>
             {canManage && balance > 0 && <RecordPayment voucherId={v.id} balance={balance} />}
           </>
         }

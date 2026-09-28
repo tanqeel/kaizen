@@ -75,7 +75,10 @@ export default async function PortalPage({
     );
   }
 
-  const { student, children, campus, journey, fees, exams, notificationsNote } = summary;
+  const { student, children, campus, journey, fees, exams, notificationsNote, diary, notices, dateSheet } = summary;
+  const journeyLabel = summary.displayDateIsToday
+    ? "Today's subject journey"
+    : `Subject journey — ${pktDate(summary.displayDate)} (latest school day with records)`;
 
   return (
     <div>
@@ -83,7 +86,6 @@ export default async function PortalPage({
         title="Parent Portal"
         subtitle={`${student.name} · ${student.grade} - ${student.section} · ${student.admissionNo} · ${pktDate(summary.date)}`}
       />
-
       {/* Child selector (parents with several children) / support banner */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {children.length > 1 &&
@@ -166,7 +168,7 @@ export default async function PortalPage({
       {/* Subject journey timeline */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Today&apos;s subject journey</CardTitle>
+          <CardTitle>{journeyLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           {journey.length === 0 ? (
@@ -206,6 +208,119 @@ export default async function PortalPage({
         </CardContent>
       </Card>
 
+      {/* Class diary — what was taught, classwork & homework */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Class diary</CardTitle>
+            <Link
+              href="/diary"
+              className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
+            >
+              <Icon name="book-open" size={16} /> Full diary
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {diary.length === 0 ? (
+            <EmptyState
+              icon="book-open"
+              title="No diary entries this week"
+              guidance="Teachers post what was taught, classwork and homework here every day."
+            />
+          ) : (
+            <div className="space-y-4">
+              {diary.slice(0, 3).map((d, i) => (
+                <div key={i} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="tnum font-semibold">{pktDate(d.date)}</span>
+                    {d.subject && <Badge variant="info">{d.subject}</Badge>}
+                    <span>by {d.teacher}</span>
+                  </div>
+                  <dl className="mt-2 space-y-1.5">
+                    {([
+                      ['Taught', d.taughtToday],
+                      ['Classwork', d.classwork],
+                      ['Homework', d.homework],
+                    ] as const)
+                      .filter(([, v]) => v)
+                      .map(([label, v]) => (
+                        <div key={label} className="text-sm">
+                          <span className="font-semibold">{label}: </span>
+                          <span className="text-slate-700 dark:text-slate-300">{v}</span>
+                        </div>
+                      ))}
+                  </dl>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notices + upcoming date sheet */}
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Notices</CardTitle>
+              <Link
+                href="/notices"
+                className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
+              >
+                <Icon name="megaphone" size={16} /> All notices
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {notices.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No notices right now.</p>
+            ) : (
+              <ul className="space-y-3">
+                {notices.map((n, i) => (
+                  <li key={i} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      {n.priority === 'URGENT' && <Badge variant="pending">Urgent</Badge>}
+                      <p className="text-sm font-semibold">{n.title}</p>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{n.body}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming exams</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dateSheet.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No exam date sheet published yet.</p>
+            ) : (
+              <Table>
+                <THead>
+                  <TRow>
+                    <TH>Date</TH>
+                    <TH>Subject</TH>
+                    <TH>Marks</TH>
+                  </TRow>
+                </THead>
+                <TBody>
+                  {dateSheet.map((s, i) => (
+                    <TRow key={i}>
+                      <TD className="tnum">{pktDate(s.date)}</TD>
+                      <TD className="font-medium">{s.subject}</TD>
+                      <TD className="tnum">{s.totalMarks}</TD>
+                    </TRow>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Fee snapshot */}
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -229,6 +344,9 @@ export default async function PortalPage({
                       <TH>Paid</TH>
                       <TH>Balance</TH>
                       <TH>Status</TH>
+                      <TH>
+                        <span className="sr-only">Challan</span>
+                      </TH>
                     </TRow>
                   </THead>
                   <TBody>
@@ -240,6 +358,15 @@ export default async function PortalPage({
                         <TD className="tnum font-semibold">{pkr(v.balance)}</TD>
                         <TD>
                           <Badge variant={STATUS_BADGE[v.status] ?? 'neutral'}>{v.status}</Badge>
+                        </TD>
+                        <TD className="text-right">
+                          <Link
+                            href={`/fees/${v.id}/challan`}
+                            className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
+                            aria-label={`Download challan for ${v.monthLabel}`}
+                          >
+                            <Icon name="download" size={16} /> Challan
+                          </Link>
                         </TD>
                       </TRow>
                     ))}
@@ -261,7 +388,17 @@ export default async function PortalPage({
       {/* Exam results summary */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Exam results</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Exam results</CardTitle>
+            {exams && (
+              <Link
+                href={`/exams/report-card?studentId=${student.id}&termId=${exams.termId}`}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                <Icon name="printer" size={16} /> Report card
+              </Link>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {!exams || exams.rows.length === 0 ? (

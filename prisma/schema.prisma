@@ -119,6 +119,7 @@ model School {
   budgets        Budget[]
   expenseHeads   ExpenseHead[]
   paymentSources PaymentSource[]
+  diaryEntries   DiaryEntry[]
 }
 
 model AcademicSession {
@@ -197,6 +198,7 @@ model Teacher {
   allocations    SubjectAllocation[]
   timetableSlots TimetableSlot[]
   classSections  Section[]           @relation("ClassTeacher")
+  diaryEntries   DiaryEntry[]
 }
 
 model StaffMember {
@@ -293,6 +295,7 @@ model Section {
   students         Student[]
   timetableSlots   TimetableSlot[]
   periodAttendance PeriodAttendance[]
+  diaryEntries     DiaryEntry[]
 }
 
 model Subject {
@@ -306,6 +309,7 @@ model Subject {
   timetableSlots   TimetableSlot[]
   examSchedules    ExamSchedule[]
   periodAttendance PeriodAttendance[]
+  diaryEntries     DiaryEntry[]
 }
 
 model SubjectAllocation {
@@ -557,6 +561,34 @@ model Announcement {
   createdById String
   createdBy   User                 @relation("AnnouncementAuthor", fields: [createdById], references: [id])
   createdAt   DateTime             @default(now())
+}
+
+// ── Class diary: what was taught today + classwork/homework ──────────────
+// Written by teachers (one entry per section+subject+day), read by students,
+// parents, teachers and management. `date` follows the YYYY-MM-DD PKT string
+// convention used by PeriodAttendance/GateCheckIn (never a DateTime).
+model DiaryEntry {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  date        String
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  taughtToday String?
+  classwork   String?
+  homework    String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sectionId, subjectId, date])
+  @@index([sectionId, date])
+  @@index([teacherId, date])
+  @@index([date])
 }
 
 model NotificationLog {

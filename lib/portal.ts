@@ -34,6 +34,9 @@ export interface PortalSummary {
   student: ChildLite & { room: string | null };
   children: ChildLite[];
   date: string;
+  /** The date the journey actually shows (today when it has data, else the latest school day with records). */
+  displayDate: string;
+  displayDateIsToday: boolean;
   campus: {
     atSchool: boolean;
     arrivalTime: string | null;
@@ -51,6 +54,28 @@ export interface PortalSummary {
     endTime: string;
     status: JourneyStatus;
   }>;
+  diary: Array<{
+    date: string;
+    subject: string | null;
+    teacher: string;
+    taughtToday: string | null;
+    classwork: string | null;
+    homework: string | null;
+    note: string | null;
+  }>;
+  notices: Array<{
+    title: string;
+    body: string;
+    priority: string;
+    createdAt: string;
+  }>;
+  dateSheet: Array<{
+    date: string;
+    subject: string;
+    startTime: string;
+    totalMarks: number;
+    termName: string;
+  }>;
   fees: {
     vouchers: Array<{
       id: string;
@@ -64,6 +89,7 @@ export interface PortalSummary {
     totalOutstanding: number;
   };
   exams: {
+    termId: string;
     termName: string;
     rows: Array<{
       subject: string;
@@ -142,7 +168,6 @@ export async function resolvePortalChild(
 export async function getPortalSummary(viewer: PortalViewer, studentId?: string): Promise<PortalSummary> {
   const { children, selected } = await resolvePortalChild(viewer, studentId);
   const today = todayPKT();
-  const weekday = weekdayPKT();
 
   const [checkIn, checkOut, student] = await Promise.all([
     prisma.gateCheckIn.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
@@ -160,16 +185,37 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   ]);
   if (!student) throw new PortalError(404, 'Student not found.');
 
-  // ── subject journey: today's timetable + period attendance ──
-  const slots = await prisma.timetableSlot.findMany({
-    where: { sectionId: student.sectionId, dayOfWeek: weekday },
-    include: { subject: true, teacher: { include: { user: true } } },
-    orderBy: { periodNo: 'asc' },
+  // ── which day to show: today when it has timetable/marks, else the latest
+  // school day with period-attendance records for this section. This keeps the
+  // portal useful every day instead of going blank when "today" has no rows
+  // yet (the stale-demo-data problem), and it is labelled honestly in the UI.
+  const [todayMarks, latestMark] = await Promise.all([
+    prisma.periodAttendance.count({ where: { studentId: selected.id, date: today } }),
+    prisma.periodAttendance.findFirst({
+      where: { sectionId: student.sectionId },
+      orderBy: { date: 'desc' },
+      select: { date: true },
+    }),
+  ]);
+  const todaySlots = await prisma.timetableSlot.count({
+    where: { sectionId: student.sectionId, dayOfWeek: weekdayPKT() },
   });
-  const marks = await prisma.periodAttendance.findMany({
-    where: { studentId: selected.id, date: today },
-    select: { periodNo: true, subjectId: true, status: true },
-  });
+  const displayDate = todayMarks > 0 || todaySlots > 0 ? today : (latestMark?.date ?? today);
+  const displayDateIsToday = displayDate === today;
+  const displayWeekday = weekdayPKT(new Date(`${displayDate}T12:00:00+05:00`));
+
+  // ── subject journey: timetable + period attendance for the display day ──
+  const [slots, marks] = await Promise.all([
+    prisma.timetableSlot.findMany({
+      where: { sectionId: student.sectionId, dayOfWeek: displayWeekday },
+      include: { subject: true, teacher: { include: { user: true } } },
+      orderBy: { periodNo: 'asc' },
+    }),
+    prisma.periodAttendance.findMany({
+      where: { studentId: selected.id, date: displayDate },
+      select: { periodNo: true, subjectId: true, status: true },
+    }),
+  ]);
   const journey = slots.map((s) => {
     // Exact (period, subject) match first; fall back to any row for the period.
     const m =
@@ -228,13 +274,58 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
           remarks: r.remarks,
         };
       });
-    exams = { termName: student.examResults.find((r) => r.examSchedule.examTermId === latestTermId)!.examSchedule.examTerm.name, rows };
+    exams = {
+      termId: latestTermId,
+      termName: student.examResults.find((r) => r.examSchedule.examTermId === latestTermId)!.examSchedule.examTerm.name,
+      rows,
+    };
   }
+
+  // ── diary (last 7 days for this section), notices for parents, upcoming
+  // date sheet for this grade — batched so the portal stays fast ──
+  const weekAgo = (() => {
+    const d = new Date(`${today}T12:00:00+05:00`);
+    d.setDate(d.getDate() - 7);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  })();
+  const [diaryRows, noticeRows, scheduleRows] = await Promise.all([
+    prisma.diaryEntry.findMany({
+      where: { sectionId: student.sectionId, date: { gte: weekAgo } },
+      include: {
+        subject: { select: { name: true } },
+        teacher: { include: { user: { select: { name: true } } } },
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      take: 10,
+    }),
+    prisma.announcement.findMany({
+      where: {
+        OR: [
+          { audience: 'ALL' },
+          { audience: 'PARENTS' },
+          { audience: 'GRADES', gradeId: student.gradeId },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
+    prisma.examSchedule.findMany({
+      where: { gradeId: student.gradeId, date: { gte: new Date(`${today}T00:00:00+05:00`) } },
+      include: { subject: { select: { name: true } }, examTerm: { select: { name: true } } },
+      orderBy: { date: 'asc' },
+      take: 8,
+    }),
+  ]);
 
   return {
     student: selected,
     children,
     date: today,
+    displayDate,
+    displayDateIsToday,
     campus: {
       atSchool: !!checkIn && !checkOut,
       arrivalTime: checkIn ? checkIn.checkInTime.toISOString() : null,
@@ -243,6 +334,28 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       checkoutTime: checkOut ? checkOut.checkOutTime.toISOString() : null,
     },
     journey,
+    diary: diaryRows.map((e) => ({
+      date: e.date,
+      subject: e.subject?.name ?? null,
+      teacher: e.teacher.user?.name ?? 'Teacher',
+      taughtToday: e.taughtToday,
+      classwork: e.classwork,
+      homework: e.homework,
+      note: e.note,
+    })),
+    notices: noticeRows.map((n) => ({
+      title: n.title,
+      body: n.body,
+      priority: n.priority,
+      createdAt: n.createdAt.toISOString(),
+    })),
+    dateSheet: scheduleRows.map((s) => ({
+      date: s.date.toISOString(),
+      subject: s.subject.name,
+      startTime: s.startTime,
+      totalMarks: s.totalMarks,
+      termName: s.examTerm.name,
+    })),
     fees: { vouchers, totalOutstanding },
     exams,
     notificationsNote:

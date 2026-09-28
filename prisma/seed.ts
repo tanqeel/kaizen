@@ -87,6 +87,7 @@ async function main() {
   await prisma.notificationLog.deleteMany();
   await prisma.smsTemplate.deleteMany();
   await prisma.announcement.deleteMany();
+  await prisma.diaryEntry.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.feeVoucherLine.deleteMany();
   await prisma.feeVoucher.deleteMany();
@@ -518,6 +519,31 @@ async function main() {
     ],
   });
   console.log('Seeded: announcements + notifications + templates');
+
+  // ── class diary (today, first 8 sections) ──
+  const diarySamples = [
+    { taught: 'Fractions — addition and subtraction of like fractions', cw: 'Exercise 5.1, Q1–Q6 solved in class', hw: 'Exercise 5.1, Q7–Q12 — due tomorrow' },
+    { taught: 'Reading comprehension — "The Honest Woodcutter"', cw: 'New vocabulary with Urdu meanings written in notebook', hw: 'Learn 10 new words and write 5 sentences' },
+    { taught: 'Parts of plants — root, stem, leaf and flower', cw: 'Diagram of a plant labelled in notebook', hw: 'Draw and label the parts of a flower' },
+    { taught: 'Multiplication tables 6 to 8', cw: 'Table test of 6 and 7 taken in class', hw: 'Learn table of 8, written twice' },
+    { taught: 'Noun and its kinds — proper, common, collective', cw: 'Exercise: underline nouns in 10 sentences', hw: 'Write 5 examples of each kind of noun' },
+    { taught: 'The water cycle — evaporation, condensation, rain', cw: 'Water cycle diagram drawn and explained', hw: 'Write 6 lines on why rain is important' },
+  ];
+  for (let di = 0; di < Math.min(8, sections.length); di++) {
+    const sec = sections[di];
+    const t = teachers[(sec.level + di) % teachers.length];
+    const subj = subjects[di % subjects.length];
+    const s = diarySamples[di % diarySamples.length];
+    await prisma.diaryEntry.create({
+      data: {
+        schoolId: school.id, date: today, sectionId: sec.id,
+        subjectId: subj.id, teacherId: t.id,
+        taughtToday: s.taught, classwork: s.cw, homework: s.hw,
+        note: di % 3 === 0 ? 'Short test on Friday — please revise this topic at home.' : null,
+      },
+    });
+  }
+  console.log('Seeded: class diary');
 
   // ── expenses, budgets ──
   const heads = await Promise.all(

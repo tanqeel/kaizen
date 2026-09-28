@@ -41,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { schoolName, sessionLabel } = await getSchoolHeader();
 
-  const nav = NAV_ITEMS.filter((item) => can(user.role, item.perm));
+  const nav = NAV_ITEMS.filter((item) => can(user.role, item.perm) && !item.hideFor?.includes(user.role));
 
   return (
     <div className="min-h-dvh">

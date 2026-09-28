@@ -21,7 +21,10 @@ export type Permission =
   | 'biometric.use'
   | 'ai.use'
   | 'admin.manage'
-  | 'portal.view';
+  | 'portal.view'
+  | 'diary.view'
+  | 'diary.manage'
+  | 'notices.view';
 
 const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
 
@@ -46,6 +49,9 @@ const MATRIX: Record<Permission, Role[]> = {
   'ai.use': ALL,
   'admin.manage': ['SUPER_ADMIN'],
   'portal.view': ['PARENT'],
+  'diary.view': ALL,
+  'diary.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'notices.view': ALL,
 };
 
 export function can(role: Role, perm: Permission): boolean {
@@ -69,15 +75,18 @@ export function requirePagePermission(role: Role, perm: Permission): void {
   if (!can(role, perm)) forbidden();
 }
 
-export type NavItem = { href: string; label: string; perm: Permission };
+export type NavItem = { href: string; label: string; perm: Permission; hideFor?: Role[] };
 
 /** Sidebar navigation. Items are filtered by role at render time. */
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Dashboard', perm: 'dashboard.view' },
+  // Parents live in "My Children" — the generic Dashboard duplicates it, so hide it for them.
+  { href: '/', label: 'Dashboard', perm: 'dashboard.view', hideFor: ['PARENT'] },
   { href: '/portal', label: 'My Children', perm: 'portal.view' },
   { href: '/students', label: 'Students', perm: 'students.view' },
   { href: '/attendance', label: 'Attendance', perm: 'attendance.view' },
   { href: '/academics', label: 'Academics', perm: 'academics.view' },
+  { href: '/diary', label: 'Class Diary', perm: 'diary.view' },
+  { href: '/notices', label: 'Notices', perm: 'notices.view' },
   { href: '/exams', label: 'Exams & Results', perm: 'exams.view' },
   { href: '/fees', label: 'Fees', perm: 'finance.view' },
   { href: '/expenses', label: 'Expenses', perm: 'finance.manage' },
