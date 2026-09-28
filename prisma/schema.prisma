@@ -107,19 +107,21 @@ model School {
   timezone  String   @default("Asia/Karachi")
   createdAt DateTime @default(now())
 
-  sessions       AcademicSession[]
-  shifts         Shift[]
-  grades         Grade[]
-  subjects       Subject[]
-  feeHeads       FeeHead[]
-  announcements  Announcement[]
-  smsTemplates   SmsTemplate[]
-  terminals      BiometricTerminal[]
-  expenses       Expense[]
-  budgets        Budget[]
-  expenseHeads   ExpenseHead[]
-  paymentSources PaymentSource[]
-  diaryEntries   DiaryEntry[]
+  sessions              AcademicSession[]
+  shifts                Shift[]
+  grades                Grade[]
+  subjects              Subject[]
+  feeHeads              FeeHead[]
+  announcements         Announcement[]
+  smsTemplates          SmsTemplate[]
+  terminals             BiometricTerminal[]
+  expenses              Expense[]
+  budgets               Budget[]
+  expenseHeads          ExpenseHead[]
+  paymentSources        PaymentSource[]
+  diaryEntries          DiaryEntry[]
+  studyMaterials        StudyMaterial[]
+  admissionApplications AdmissionApplication[]
 }
 
 model AcademicSession {
@@ -158,20 +160,21 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  sessions           SessionToken[]
-  teacher            Teacher?
-  staffMember        StaffMember?
-  parent             Parent?
-  student            Student?
-  announcements      Announcement[]     @relation("AnnouncementAuthor")
-  notifications      NotificationLog[]
-  expensesAdded      Expense[]          @relation("ExpenseAuthor")
-  paymentsReceived   Payment[]          @relation("PaymentReceiver")
-  attendanceMarked   PeriodAttendance[] @relation("AttendanceMarker")
-  gateCheckInsCreated GateCheckIn[]     @relation("GateCheckInCreator")
-  conflictsResolved  AttendanceConflict[] @relation("ConflictResolver")
-  aiConversations    AiConversation[]
-  aiUsageLogs        AiUsageLog[]
+  sessions            SessionToken[]
+  teacher             Teacher?
+  staffMember         StaffMember?
+  parent              Parent?
+  student             Student?
+  announcements       Announcement[]         @relation("AnnouncementAuthor")
+  notifications       NotificationLog[]
+  expensesAdded       Expense[]              @relation("ExpenseAuthor")
+  paymentsReceived    Payment[]              @relation("PaymentReceiver")
+  attendanceMarked    PeriodAttendance[]     @relation("AttendanceMarker")
+  gateCheckInsCreated GateCheckIn[]          @relation("GateCheckInCreator")
+  conflictsResolved   AttendanceConflict[]   @relation("ConflictResolver")
+  aiConversations     AiConversation[]
+  aiUsageLogs         AiUsageLog[]
+  decidedApplications AdmissionApplication[]
 }
 
 model SessionToken {
@@ -199,6 +202,7 @@ model Teacher {
   timetableSlots TimetableSlot[]
   classSections  Section[]           @relation("ClassTeacher")
   diaryEntries   DiaryEntry[]
+  studyMaterials StudyMaterial[]
 }
 
 model StaffMember {
@@ -227,25 +231,25 @@ model Parent {
 }
 
 model Student {
-  id          String    @id @default(cuid())
-  admissionNo String    @unique
+  id          String          @id @default(cuid())
+  admissionNo String          @unique
   name        String
   dob         DateTime?
   gender      String?
   bForm       String?
   gradeId     String
-  grade       Grade     @relation(fields: [gradeId], references: [id])
+  grade       Grade           @relation(fields: [gradeId], references: [id])
   sectionId   String
-  section     Section   @relation(fields: [sectionId], references: [id])
+  section     Section         @relation(fields: [sectionId], references: [id])
   shiftId     String
-  shift       Shift     @relation(fields: [shiftId], references: [id])
+  shift       Shift           @relation(fields: [shiftId], references: [id])
   sessionId   String
   session     AcademicSession @relation(fields: [sessionId], references: [id])
-  userId      String?   @unique
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId      String?         @unique
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   address     String?
   photoUrl    String?
-  isActive    Boolean   @default(true)
+  isActive    Boolean         @default(true)
 
   parents          StudentParent[]
   gateCheckIns     GateCheckIn[]
@@ -276,11 +280,13 @@ model Grade {
   level    Int
   name     String
 
-  sections      Section[]
-  students      Student[]
-  allocations   SubjectAllocation[]
-  examSchedules ExamSchedule[]
-  feeHeads      FeeHead[]
+  sections              Section[]
+  students              Student[]
+  allocations           SubjectAllocation[]
+  examSchedules         ExamSchedule[]
+  feeHeads              FeeHead[]
+  studyMaterials        StudyMaterial[]
+  admissionApplications AdmissionApplication[]
 }
 
 model Section {
@@ -296,6 +302,7 @@ model Section {
   timetableSlots   TimetableSlot[]
   periodAttendance PeriodAttendance[]
   diaryEntries     DiaryEntry[]
+  studyMaterials   StudyMaterial[]
 }
 
 model Subject {
@@ -310,6 +317,7 @@ model Subject {
   examSchedules    ExamSchedule[]
   periodAttendance PeriodAttendance[]
   diaryEntries     DiaryEntry[]
+  studyMaterials   StudyMaterial[]
 }
 
 model SubjectAllocation {
@@ -343,7 +351,7 @@ model TimetableSlot {
 }
 
 model ExamTerm {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   sessionId String
   session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   name      String
@@ -383,24 +391,24 @@ model ExamResult {
 // ── Dual-tier attendance ─────────────────────────────────────────────────
 
 model GateCheckIn {
-  id          String           @id @default(cuid())
+  id          String             @id @default(cuid())
   studentId   String
-  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student     Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   date        String // YYYY-MM-DD (PKT)
   checkInTime DateTime
   method      CheckInMethod
   terminalId  String?
   terminal    BiometricTerminal? @relation(fields: [terminalId], references: [id], onDelete: SetNull)
   createdById String?
-  createdBy   User?            @relation("GateCheckInCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?              @relation("GateCheckInCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([studentId, date])
 }
 
 model GateCheckOut {
-  id           String           @id @default(cuid())
+  id           String             @id @default(cuid())
   studentId    String
-  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   date         String
   checkOutTime DateTime
   method       CheckInMethod
@@ -459,19 +467,19 @@ model FeeHead {
 }
 
 model FeeVoucher {
-  id             String        @id @default(cuid())
+  id             String          @id @default(cuid())
   studentId      String
-  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   sessionId      String
   session        AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   month          Int
   year           Int
   dueDate        DateTime
   totalAmount    Int
-  discountAmount Int           @default(0)
-  fineAmount     Int           @default(0)
-  status         VoucherStatus @default(UNPAID)
-  issuedAt       DateTime      @default(now())
+  discountAmount Int             @default(0)
+  fineAmount     Int             @default(0)
+  status         VoucherStatus   @default(UNPAID)
+  issuedAt       DateTime        @default(now())
 
   lines    FeeVoucherLine[]
   payments Payment[]
@@ -535,13 +543,13 @@ model Expense {
 }
 
 model Budget {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   schoolId      String
-  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school        School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sessionId     String
   session       AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   headId        String
-  head          ExpenseHead   @relation(fields: [headId], references: [id], onDelete: Cascade)
+  head          ExpenseHead     @relation(fields: [headId], references: [id], onDelete: Cascade)
   plannedAmount Int
 
   @@unique([schoolId, sessionId, headId])
@@ -602,6 +610,7 @@ model NotificationLog {
   message   String
   status    NotificationStatus  @default(SENT)
   sentAt    DateTime            @default(now())
+  readAt    DateTime?
 }
 
 model SmsTemplate {
@@ -659,4 +668,63 @@ model AiUsageLog {
   provider  String   @default("rule-based")
   latencyMs Int
   createdAt DateTime @default(now())
+}
+
+// ── Phase 2: study materials + admissions ──────────────────────────────────
+enum MaterialType {
+  NOTE
+  WORKSHEET
+  PAST_PAPER
+  VIDEO_LINK
+  AUDIO_LINK
+}
+
+model StudyMaterial {
+  id          String       @id @default(cuid())
+  schoolId    String
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjectId   String
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  gradeId     String?
+  grade       Grade?       @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  sectionId   String?
+  section     Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  teacherId   String
+  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  fileUrl     String?
+  type        MaterialType
+  createdAt   DateTime     @default(now())
+
+  @@index([schoolId, subjectId])
+  @@index([gradeId])
+  @@index([teacherId])
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AdmissionApplication {
+  id          String            @id @default(cuid())
+  schoolId    String
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  dob         DateTime?
+  gender      String?
+  gradeId     String
+  grade       Grade             @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  parentName  String
+  parentPhone String
+  address     String?
+  status      ApplicationStatus @default(PENDING)
+  decidedById String?
+  decidedBy   User?             @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([schoolId, status])
 }

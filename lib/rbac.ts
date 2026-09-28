@@ -24,7 +24,12 @@ export type Permission =
   | 'portal.view'
   | 'diary.view'
   | 'diary.manage'
-  | 'notices.view';
+  | 'notices.view'
+  | 'materials.view'
+  | 'materials.manage'
+  | 'notifications.view'
+  | 'admissions.view'
+  | 'admissions.manage';
 
 const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
 
@@ -52,6 +57,11 @@ const MATRIX: Record<Permission, Role[]> = {
   'diary.view': ALL,
   'diary.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
   'notices.view': ALL,
+  'materials.view': ALL,
+  'materials.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'notifications.view': ALL,
+  'admissions.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'admissions.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
 };
 
 export function can(role: Role, perm: Permission): boolean {
@@ -87,6 +97,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/academics', label: 'Academics', perm: 'academics.view' },
   { href: '/diary', label: 'Class Diary', perm: 'diary.view' },
   { href: '/notices', label: 'Notices', perm: 'notices.view' },
+  { href: '/materials', label: 'Study Material', perm: 'materials.view' },
+  { href: '/timetable', label: 'Timetable', perm: 'academics.view' },
+  { href: '/notifications', label: 'Notifications', perm: 'notifications.view' },
+  { href: '/admissions', label: 'Admissions', perm: 'admissions.view' },
   { href: '/exams', label: 'Exams & Results', perm: 'exams.view' },
   { href: '/fees', label: 'Fees', perm: 'finance.view' },
   { href: '/expenses', label: 'Expenses', perm: 'finance.manage' },
