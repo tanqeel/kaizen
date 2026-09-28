@@ -1,0 +1,89 @@
+import type { Role } from '@prisma/client';
+import { forbidden } from 'next/navigation';
+
+export type Permission =
+  | 'dashboard.view'
+  | 'students.manage'
+  | 'students.view'
+  | 'attendance.view'
+  | 'attendance.gate'
+  | 'attendance.period'
+  | 'attendance.conflicts'
+  | 'academics.manage'
+  | 'academics.view'
+  | 'exams.manage'
+  | 'exams.view'
+  | 'finance.manage'
+  | 'finance.view'
+  | 'comms.manage'
+  | 'staff.manage'
+  | 'biometric.manage'
+  | 'biometric.use'
+  | 'ai.use'
+  | 'admin.manage'
+  | 'portal.view';
+
+const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
+
+const MATRIX: Record<Permission, Role[]> = {
+  'dashboard.view': ALL,
+  'students.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'students.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF'],
+  'attendance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF'],
+  'attendance.gate': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'attendance.period': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'attendance.conflicts': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'academics.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'academics.view': ALL,
+  'exams.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'exams.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT', 'STUDENT'],
+  'finance.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'finance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF', 'PARENT'],
+  'comms.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'staff.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'biometric.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'biometric.use': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'ai.use': ALL,
+  'admin.manage': ['SUPER_ADMIN'],
+  'portal.view': ['PARENT'],
+};
+
+export function can(role: Role, perm: Permission): boolean {
+  return MATRIX[perm].includes(role);
+}
+
+/** Throws a 403-tagged error when the role lacks the permission. */
+export function requirePermission(role: Role, perm: Permission): void {
+  if (!can(role, perm)) {
+    const err = new Error(`Forbidden: ${role} lacks ${perm}`) as Error & { status?: number };
+    err.status = 403;
+    throw err;
+  }
+}
+
+/**
+ * Page-level guard: renders the app's 403 page (app/forbidden.tsx) when the
+ * role lacks the permission. Call after requireUser() in server components.
+ */
+export function requirePagePermission(role: Role, perm: Permission): void {
+  if (!can(role, perm)) forbidden();
+}
+
+export type NavItem = { href: string; label: string; perm: Permission };
+
+/** Sidebar navigation. Items are filtered by role at render time. */
+export const NAV_ITEMS: NavItem[] = [
+  { href: '/', label: 'Dashboard', perm: 'dashboard.view' },
+  { href: '/portal', label: 'My Children', perm: 'portal.view' },
+  { href: '/students', label: 'Students', perm: 'students.view' },
+  { href: '/attendance', label: 'Attendance', perm: 'attendance.view' },
+  { href: '/academics', label: 'Academics', perm: 'academics.view' },
+  { href: '/exams', label: 'Exams & Results', perm: 'exams.view' },
+  { href: '/fees', label: 'Fees', perm: 'finance.view' },
+  { href: '/expenses', label: 'Expenses', perm: 'finance.manage' },
+  { href: '/comms', label: 'Notices & SMS', perm: 'comms.manage' },
+  { href: '/biometric', label: 'Biometric', perm: 'biometric.use' },
+  { href: '/ai', label: 'Kaizen AI', perm: 'ai.use' },
+  { href: '/staff', label: 'Staff', perm: 'staff.manage' },
+  { href: '/admin', label: 'Admin', perm: 'admin.manage' },
+];

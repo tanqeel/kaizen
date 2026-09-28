@@ -1,0 +1,130 @@
+import { requireUser } from '@/lib/auth';
+import { requirePagePermission } from '@/lib/rbac';
+import { prisma } from '@/lib/db';
+import { pkr, pktDate } from '@/lib/format';
+import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader, Table, TBody, TD, TH, THead, TRow } from '@/components/ui';
+import { Icon } from '@/components/icons';
+
+export default async function StaffPage() {
+  const user = await requireUser();
+  requirePagePermission(user.role, 'staff.manage');
+
+  const [teachers, staffMembers] = await Promise.all([
+    prisma.teacher.findMany({
+      where: { isActive: true },
+      include: {
+        user: true,
+        allocations: { include: { subject: true }, orderBy: { subject: { name: 'asc' } } },
+      },
+      orderBy: { employeeId: 'asc' },
+    }),
+    prisma.staffMember.findMany({
+      where: { isActive: true },
+      include: { user: true },
+      orderBy: { employeeId: 'asc' },
+    }),
+  ]);
+
+  return (
+    <div>
+      <PageHeader
+        title="Teachers & Staff"
+        subtitle="Faculty and operational staff. Salary figures are visible to leadership roles (Super Admin, Principal) only."
+      />
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Icon name="users" size={18} /> Teachers ({teachers.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {teachers.length === 0 ? (
+            <EmptyState icon="users" title="No teachers" guidance="No active teacher records found." />
+          ) : (
+            <Table>
+              <THead>
+                <TRow>
+                  <TH>Name</TH>
+                  <TH>Employee ID</TH>
+                  <TH>Phone</TH>
+                  <TH>Subjects</TH>
+                  <TH>Monthly salary</TH>
+                  <TH>Hired</TH>
+                </TRow>
+              </THead>
+              <TBody>
+                {teachers
+                  .slice()
+                  .sort((a, b) => (a.user?.name ?? '').localeCompare(b.user?.name ?? ''))
+                  .map((t) => (
+                  <TRow key={t.id}>
+                    <TD className="font-medium">{t.user?.name ?? '—'}</TD>
+                    <TD className="tnum">{t.employeeId}</TD>
+                    <TD className="tnum">{t.phone}</TD>
+                    <TD>
+                      <span className="flex flex-wrap gap-1">
+                        {t.allocations.length === 0 ? (
+                          <span className="text-slate-400">—</span>
+                        ) : (
+                          t.allocations.map((a) => (
+                            <Badge key={a.id} variant="info">
+                              {a.subject.name}
+                            </Badge>
+                          ))
+                        )}
+                      </span>
+                    </TD>
+                    <TD className="tnum font-semibold">{pkr(t.salaryMonthly)}</TD>
+                    <TD className="tnum">{pktDate(t.hireDate)}</TD>
+                  </TRow>
+                  ))}
+              </TBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Icon name="id-card" size={18} /> Staff members ({staffMembers.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {staffMembers.length === 0 ? (
+            <EmptyState icon="id-card" title="No staff members" guidance="No active staff records found." />
+          ) : (
+            <Table>
+              <THead>
+                <TRow>
+                  <TH>Name</TH>
+                  <TH>Employee ID</TH>
+                  <TH>Designation</TH>
+                  <TH>Phone</TH>
+                  <TH>Monthly salary</TH>
+                  <TH>Hired</TH>
+                </TRow>
+              </THead>
+              <TBody>
+                {staffMembers
+                  .slice()
+                  .sort((a, b) => (a.user?.name ?? '').localeCompare(b.user?.name ?? ''))
+                  .map((s) => (
+                  <TRow key={s.id}>
+                    <TD className="font-medium">{s.user?.name ?? '—'}</TD>
+                    <TD className="tnum">{s.employeeId}</TD>
+                    <TD>{s.designation}</TD>
+                    <TD className="tnum">{s.phone}</TD>
+                    <TD className="tnum font-semibold">{pkr(s.salaryMonthly)}</TD>
+                    <TD className="tnum">{pktDate(s.hireDate)}</TD>
+                  </TRow>
+                  ))}
+              </TBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

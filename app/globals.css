@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* Class-based dark mode: toggled by .dark on <html> (components/ThemeToggle.tsx) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Font: Inter first, system stack fallback (no webfont download at build time) */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+    monospace;
+
+  /* Brand = indigo scale anchored on #4F46E5 (indigo-600) */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  /* Status colors */
+  --color-status-present: #059669; /* emerald-600 */
+  --color-status-absent: #e11d48; /* rose-600 */
+  --color-status-pending: #d97706; /* amber-600 */
+  --color-status-overdue: #dc2626; /* red-600 */
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-pop: 0 12px 32px rgb(15 23 42 / 0.18);
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-spin-slow: spin 1s linear infinite;
+
+  @keyframes shimmer {
+    from { background-position: -400px 0; }
+    to { background-position: 400px 0; }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular numerals for data — use class `tnum` on tables/amounts */
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Compact data density defaults */
+@utility text-compact {
+  font-size: 0.8125rem;
+  line-height: 1.35rem;
+}
+
+/* Sticky table header helper */
+@utility thead-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.dark :focus-visible {
+  outline-color: var(--color-brand-400);
+}
+
+/* Skip-to-content link (visually hidden until focused) */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-brand-600);
+  color: #fff;
+  font-weight: 600;
+  transition: top 0.15s ease;
+}
+.skip-link:focus-visible {
+  top: 1rem;
+  outline-color: #fff;
+}
+
+/* Loading shimmer for Skeleton */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(148 163 184 / 0.18) 25%,
+    rgb(148 163 184 / 0.32) 50%,
+    rgb(148 163 184 / 0.18) 75%
+  );
+  background-size: 800px 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Thin, theme-aware scrollbars for drawers/panels */
+.nice-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.6) transparent;
+}
+.nice-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.5);
+  border-radius: 8px;
+}
+
+/* Respect reduced motion — kill animations/transitions */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .skeleton-shimmer {
+    animation: none;
+  }
+}
+
+/* Print: clean report-card output */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
