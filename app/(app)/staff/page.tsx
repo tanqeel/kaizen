@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { pkr, pktDate } from '@/lib/format';
 import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader, Table, TBody, TD, TH, THead, TRow } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import PerformanceSection from './_components/performance-section';
 
 export default async function StaffPage() {
   const user = await requireUser();
@@ -125,6 +126,9 @@ export default async function StaffPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Teacher performance analytics */}
+      <PerformanceSection />
     </div>
   );
 }

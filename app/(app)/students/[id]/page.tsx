@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
-import { requirePagePermission } from '@/lib/rbac';
+import { requirePagePermission, can } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
 import { monthLabel, balanceDue, displayStatus, statusBadgeVariant } from '@/lib/fees';
 import { pkr, pktDate, pktTime, todayPKT } from '@/lib/format';
 import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import DiscountsSection from './_components/discounts-section';
+import ProgressSection from './_components/progress-section';
 
 function gradeBand(pct: number): string {
   if (pct >= 90) return 'A+';
@@ -207,6 +209,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               )}
             </CardContent>
           </Card>
+
+          {/* Discounts & scholarships */}
+          <DiscountsSection studentId={student.id} canManage={can(user.role, 'finance.manage')} />
         </div>
 
         <div className="flex flex-col gap-6 xl:col-span-2">
@@ -355,6 +360,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               )}
             </CardContent>
           </Card>
+
+          {/* Progress analytics */}
+          <ProgressSection studentId={student.id} />
         </div>
       </div>
 

@@ -7,6 +7,8 @@ import { pktTime, pktDate, pkr } from '@/lib/format';
 import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader, Stat, Table, THead, TH, TBody, TRow, TD } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { SupportPicker } from './SupportPicker';
+import { UpcomingEventsCard } from './_components/upcoming-events-card';
+import { UpcomingLiveClassesCard } from './_components/upcoming-live-classes-card';
 
 const JOURNEY_BADGE: Record<JourneyStatus, { variant: 'present' | 'absent' | 'pending' | 'neutral'; label: string }> = {
   PRESENT: { variant: 'present', label: 'Present' },
@@ -319,6 +321,12 @@ export default async function PortalPage({
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Upcoming events + live classes */}
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <UpcomingLiveClassesCard userId={user.id} />
+        <UpcomingEventsCard userId={user.id} />
       </div>
 
       {/* Fee snapshot */}

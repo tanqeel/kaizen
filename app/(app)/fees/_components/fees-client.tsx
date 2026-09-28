@@ -9,6 +9,7 @@ import {
 import { Icon } from '@/components/icons';
 import { pkr, pktDate, todayPKT } from '@/lib/format';
 import { MONTHS, monthLabel, statusBadgeVariant, type DisplayStatus } from '@/lib/fees';
+import FeePolicyCard from './fee-policy-card';
 import type { VoucherRow, VoucherSummary } from '@/app/api/fees/vouchers/route';
 
 interface GradeOption {
@@ -125,6 +126,8 @@ export function FeesClient({ canManage, grades }: { canManage: boolean; grades: 
           />
         </div>
       )}
+
+      <FeePolicyCard canManage={canManage} />
 
       {!isDefaulters && (
         <Card className="mb-6">
