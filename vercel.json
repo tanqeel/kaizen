@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  // Run serverless functions in Singapore (sin1), the same region as the
-  // Neon Postgres database — avoids a ~300ms intercontinental round trip
-  // on every single database query.
-  "regions": ["sin1"]
-}
