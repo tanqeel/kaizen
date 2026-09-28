@@ -47,6 +47,21 @@ export async function GET() {
   await time('announcement.findMany', () =>
     prisma.announcement.findMany({ take: 5 }));
 
+  // ── parallel batch test: 9 queries like the real portal batch ──
+  const ps = Date.now();
+  await Promise.all([
+    prisma.gateCheckIn.findUnique({ where: { studentId_date: { studentId: sid, date: today } } }),
+    prisma.gateCheckOut.findUnique({ where: { studentId_date: { studentId: sid, date: today } } }),
+    prisma.student.findUnique({ where: { id: sid } }),
+    prisma.feeVoucher.findMany({ where: { studentId: sid }, include: { payments: true } }),
+    prisma.examResult.findMany({ where: { studentId: sid }, include: { examSchedule: { include: { subject: true, examTerm: true } } } }),
+    prisma.periodAttendance.count({ where: { studentId: sid, date: today } }),
+    prisma.periodAttendance.findFirst({ where: { sectionId: st.sectionId }, orderBy: { date: 'desc' }, select: { date: true } }),
+    prisma.timetableSlot.count({ where: { sectionId: st.sectionId } }),
+    prisma.grade.findUnique({ where: { id: st.gradeId }, select: { schoolId: true } }),
+  ]);
+  t['parallel-batch-of-9'] = Date.now() - ps;
+
   void studentId;
   return NextResponse.json({ timings_ms: t });
 }
