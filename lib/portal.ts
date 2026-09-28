@@ -28,6 +28,9 @@ export interface ChildLite {
   admissionNo: string;
   grade: string;
   section: string;
+  /** Internal scoping ids (also returned to the client; harmless). */
+  gradeId: string;
+  sectionId: string;
 }
 
 export type JourneyStatus = 'PRESENT' | 'ABSENT' | 'PENDING' | 'NOT_MARKED';
@@ -143,6 +146,8 @@ export async function resolvePortalChild(
       admissionNo: k.admissionNo,
       grade: k.grade.name,
       section: k.section.name,
+      gradeId: k.gradeId,
+      sectionId: k.sectionId,
     });
     return {
       children: kids.map(lite),
@@ -162,6 +167,8 @@ export async function resolvePortalChild(
       admissionNo: student.admissionNo,
       grade: student.grade.name,
       section: student.section.name,
+      gradeId: student.gradeId,
+      sectionId: student.sectionId,
       room: student.section.room,
     };
     return { children: [lite], selected: lite };
@@ -174,7 +181,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   const { children, selected } = await resolvePortalChild(viewer, studentId);
   const today = todayPKT();
 
-  const [checkIn, checkOut, student, kidSections] = await Promise.all([
+  const [checkIn, checkOut, student, gradeSchool, todayMarks, latestMark, todaySlots] = await Promise.all([
     prisma.gateCheckIn.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
     prisma.gateCheckOut.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
     prisma.student.findUnique({
@@ -187,34 +194,26 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
         },
       },
     }),
-    // Grade/section ids of all linked children — lets the events/live-class
-    // queries below run as single queries instead of sequential chains.
-    prisma.student.findMany({
-      where: { id: { in: children.map((c) => c.id) } },
-      select: { gradeId: true, sectionId: true, grade: { select: { schoolId: true } } },
-    }),
-  ]);
-  if (!student) throw new PortalError(404, 'Student not found.');
-  const kidGradeIds = [...new Set(kidSections.map((s) => s.gradeId))];
-  const kidSectionIds = [...new Set(kidSections.map((s) => s.sectionId))];
-  const schoolId = kidSections[0]?.grade.schoolId;
-  if (!schoolId) throw new PortalError(404, 'No children are linked to this account.');
-
-  // ── which day to show: today when it has timetable/marks, else the latest
-  // school day with period-attendance records for this section. This keeps the
-  // portal useful every day instead of going blank when "today" has no rows
-  // yet (the stale-demo-data problem), and it is labelled honestly in the UI.
-  const [todayMarks, latestMark, todaySlots] = await Promise.all([
+    prisma.grade.findUnique({ where: { id: selected.gradeId }, select: { schoolId: true } }),
+    // ── which day to show: today when it has timetable/marks, else the latest
+    // school day with period-attendance records for this section. This keeps the
+    // portal useful every day instead of going blank when "today" has no rows
+    // yet (the stale-demo-data problem), and it is labelled honestly in the UI.
     prisma.periodAttendance.count({ where: { studentId: selected.id, date: today } }),
     prisma.periodAttendance.findFirst({
-      where: { sectionId: student.sectionId },
+      where: { sectionId: selected.sectionId },
       orderBy: { date: 'desc' },
       select: { date: true },
     }),
     prisma.timetableSlot.count({
-      where: { sectionId: student.sectionId, dayOfWeek: weekdayPKT() },
+      where: { sectionId: selected.sectionId, dayOfWeek: weekdayPKT() },
     }),
   ]);
+  if (!student) throw new PortalError(404, 'Student not found.');
+  const kidGradeIds = [...new Set(children.map((c) => c.gradeId))];
+  const kidSectionIds = [...new Set(children.map((c) => c.sectionId))];
+  const schoolId = gradeSchool?.schoolId;
+  if (!schoolId) throw new PortalError(404, 'No children are linked to this account.');
   const displayDate = todayMarks > 0 || todaySlots > 0 ? today : (latestMark?.date ?? today);
   const displayDateIsToday = displayDate === today;
   const displayWeekday = weekdayPKT(new Date(`${displayDate}T12:00:00+05:00`));
