@@ -1,4 +1,5 @@
-import { getSession, requireUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import { can, NAV_ITEMS } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/Sidebar';
@@ -6,12 +7,14 @@ import { Header } from '@/components/Header';
 
 /**
  * Authenticated app shell. Guards every page inside app/(app)/:
- * requireUser() redirects to /login when unauthenticated; each page adds its
+ * getSession() redirects to /login when unauthenticated; each page adds its
  * own requirePagePermission() check on top.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  // Single session lookup (was: requireUser() + getSession() = 2 identical DB round trips).
   const session = await getSession();
+  if (!session) redirect('/login');
+  const user = session.user;
 
   const [school, academicSession] = await Promise.all([
     prisma.school.findFirst(),
