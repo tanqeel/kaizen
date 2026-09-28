@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { getSessionUser } from '@/lib/auth';
 import { childStudentIds } from '@/lib/parents';
 import { todayPKT } from '@/lib/format';
 import { balanceDue, effectiveTotal } from '@/lib/fees';
@@ -62,9 +62,11 @@ function gradeBand(pct: number): string {
  * absent; presentPct is present ÷ marked (all marked rows).
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await apiUser('students.view');
-  if (auth.error) return auth.error;
-  const { user } = auth;
+  // Any signed-in user may reach this route; role scoping below decides whose
+  // record they may see. (students.view excludes PARENT/STUDENT, who are
+  // explicitly allowed here for their own children / own profile.)
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
   const { id } = await params;
 
   const student = await prisma.student.findFirst({
