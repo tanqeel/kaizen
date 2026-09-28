@@ -122,6 +122,11 @@ model School {
   diaryEntries          DiaryEntry[]
   studyMaterials        StudyMaterial[]
   admissionApplications AdmissionApplication[]
+  leaveRequests         LeaveRequest[]
+  staffAttendance       StaffAttendance[]
+  schoolEvents          SchoolEvent[]
+  feePolicy             FeePolicy?
+  liveClasses           LiveClass[]
 }
 
 model AcademicSession {
@@ -160,21 +165,25 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  sessions            SessionToken[]
-  teacher             Teacher?
-  staffMember         StaffMember?
-  parent              Parent?
-  student             Student?
-  announcements       Announcement[]         @relation("AnnouncementAuthor")
-  notifications       NotificationLog[]
-  expensesAdded       Expense[]              @relation("ExpenseAuthor")
-  paymentsReceived    Payment[]              @relation("PaymentReceiver")
-  attendanceMarked    PeriodAttendance[]     @relation("AttendanceMarker")
-  gateCheckInsCreated GateCheckIn[]          @relation("GateCheckInCreator")
-  conflictsResolved   AttendanceConflict[]   @relation("ConflictResolver")
-  aiConversations     AiConversation[]
-  aiUsageLogs         AiUsageLog[]
-  decidedApplications AdmissionApplication[]
+  sessions              SessionToken[]
+  teacher               Teacher?
+  staffMember           StaffMember?
+  parent                Parent?
+  student               Student?
+  announcements         Announcement[]         @relation("AnnouncementAuthor")
+  notifications         NotificationLog[]
+  expensesAdded         Expense[]              @relation("ExpenseAuthor")
+  paymentsReceived      Payment[]              @relation("PaymentReceiver")
+  attendanceMarked      PeriodAttendance[]     @relation("AttendanceMarker")
+  gateCheckInsCreated   GateCheckIn[]          @relation("GateCheckInCreator")
+  conflictsResolved     AttendanceConflict[]   @relation("ConflictResolver")
+  aiConversations       AiConversation[]
+  aiUsageLogs           AiUsageLog[]
+  decidedApplications   AdmissionApplication[]
+  decidedLeaves         LeaveRequest[]         @relation("LeaveDecider")
+  markedStaffAttendance StaffAttendance[]      @relation("StaffAttendanceMarker")
+  approvedDiscounts     Discount[]             @relation("DiscountApprover")
+  createdEvents         SchoolEvent[]          @relation("EventCreator")
 }
 
 model SessionToken {
@@ -198,11 +207,14 @@ model Teacher {
   salaryMonthly Int
   isActive      Boolean  @default(true)
 
-  allocations    SubjectAllocation[]
-  timetableSlots TimetableSlot[]
-  classSections  Section[]           @relation("ClassTeacher")
-  diaryEntries   DiaryEntry[]
-  studyMaterials StudyMaterial[]
+  allocations     SubjectAllocation[]
+  timetableSlots  TimetableSlot[]
+  classSections   Section[]           @relation("ClassTeacher")
+  diaryEntries    DiaryEntry[]
+  studyMaterials  StudyMaterial[]
+  leaveRequests   LeaveRequest[]
+  staffAttendance StaffAttendance[]
+  liveClasses     LiveClass[]
 }
 
 model StaffMember {
@@ -216,6 +228,9 @@ model StaffMember {
   hireDate      DateTime
   salaryMonthly Int
   isActive      Boolean  @default(true)
+
+  leaveRequests   LeaveRequest[]
+  staffAttendance StaffAttendance[]
 }
 
 model Parent {
@@ -259,6 +274,8 @@ model Student {
   examResults      ExamResult[]
   vouchers         FeeVoucher[]
   notifications    NotificationLog[]
+  leaveRequests    LeaveRequest[]
+  discounts        Discount[]
 }
 
 model StudentParent {
@@ -287,6 +304,7 @@ model Grade {
   feeHeads              FeeHead[]
   studyMaterials        StudyMaterial[]
   admissionApplications AdmissionApplication[]
+  schoolEvents          SchoolEvent[]
 }
 
 model Section {
@@ -303,6 +321,7 @@ model Section {
   periodAttendance PeriodAttendance[]
   diaryEntries     DiaryEntry[]
   studyMaterials   StudyMaterial[]
+  liveClasses      LiveClass[]
 }
 
 model Subject {
@@ -318,6 +337,7 @@ model Subject {
   periodAttendance PeriodAttendance[]
   diaryEntries     DiaryEntry[]
   studyMaterials   StudyMaterial[]
+  liveClasses      LiveClass[]
 }
 
 model SubjectAllocation {
@@ -727,4 +747,131 @@ model AdmissionApplication {
   createdAt   DateTime          @default(now())
 
   @@index([schoolId, status])
+}
+
+// ── Phase 3: leave, staff attendance, discounts, events, live classes ──────
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id            String       @id @default(cuid())
+  schoolId      String
+  school        School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId     String?
+  student       Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       Teacher?     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  staffMemberId String?
+  staffMember   StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  fromDate      String
+  toDate        String
+  reason        String
+  status        LeaveStatus  @default(PENDING)
+  decidedById   String?
+  decidedBy     User?        @relation("LeaveDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([schoolId, status])
+  @@index([studentId])
+}
+
+enum StaffAttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  LATE
+}
+
+model StaffAttendance {
+  id            String                @id @default(cuid())
+  schoolId      String
+  school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       Teacher?              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  staffMemberId String?
+  staffMember   StaffMember?          @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  date          String
+  status        StaffAttendanceStatus
+  note          String?
+  markedById    String
+  markedBy      User                  @relation("StaffAttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime              @default(now())
+
+  @@unique([teacherId, staffMemberId, date])
+  @@index([schoolId, date])
+}
+
+enum DiscountType {
+  SIBLING
+  STAFF_WARD
+  MERIT
+  NEED_BASED
+  OTHER
+}
+
+model Discount {
+  id           String       @id @default(cuid())
+  studentId    String
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type         DiscountType
+  percent      Int?
+  amount       Int?
+  reason       String?
+  approvedById String
+  approvedBy   User         @relation("DiscountApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime     @default(now())
+
+  @@index([studentId])
+}
+
+model FeePolicy {
+  id            String   @id @default(cuid())
+  schoolId      String   @unique
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  fineGraceDays Int      @default(10)
+  finePerDay    Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+model SchoolEvent {
+  id          String               @id @default(cuid())
+  schoolId    String
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  date        DateTime
+  endDate     DateTime?
+  audience    AnnouncementAudience @default(ALL)
+  gradeId     String?
+  grade       Grade?               @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  venue       String?
+  createdById String
+  createdBy   User                 @relation("EventCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime             @default(now())
+
+  @@index([schoolId, date])
+}
+
+model LiveClass {
+  id         String   @id @default(cuid())
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sectionId  String
+  section    Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subjectId  String?
+  subject    Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacherId  String
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title      String
+  meetingUrl String
+  startsAt   DateTime
+  endsAt     DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([schoolId, startsAt])
+  @@index([sectionId])
 }

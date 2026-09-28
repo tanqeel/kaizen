@@ -29,7 +29,15 @@ export type Permission =
   | 'materials.manage'
   | 'notifications.view'
   | 'admissions.view'
-  | 'admissions.manage';
+  | 'admissions.manage'
+  | 'leave.view'
+  | 'leave.manage'
+  | 'staff.attendance.view'
+  | 'staff.attendance.manage'
+  | 'events.view'
+  | 'events.manage'
+  | 'liveclasses.view'
+  | 'liveclasses.manage';
 
 const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
 
@@ -62,6 +70,14 @@ const MATRIX: Record<Permission, Role[]> = {
   'notifications.view': ALL,
   'admissions.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
   'admissions.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'leave.view': ALL,
+  'leave.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'staff.attendance.view': ALL,
+  'staff.attendance.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'events.view': ALL,
+  'events.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'liveclasses.view': ALL,
+  'liveclasses.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
 };
 
 export function can(role: Role, perm: Permission): boolean {
@@ -101,6 +117,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/timetable', label: 'Timetable', perm: 'academics.view' },
   { href: '/notifications', label: 'Notifications', perm: 'notifications.view' },
   { href: '/admissions', label: 'Admissions', perm: 'admissions.view' },
+  { href: '/leave', label: 'Leave', perm: 'leave.view' },
+  { href: '/staff/attendance', label: 'Staff Attendance', perm: 'staff.attendance.view' },
+  { href: '/events', label: 'Events', perm: 'events.view' },
+  { href: '/live-classes', label: 'Live Classes', perm: 'liveclasses.view' },
   { href: '/exams', label: 'Exams & Results', perm: 'exams.view' },
   { href: '/fees', label: 'Fees', perm: 'finance.view' },
   { href: '/expenses', label: 'Expenses', perm: 'finance.manage' },
