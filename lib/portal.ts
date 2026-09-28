@@ -1,9 +1,9 @@
 import { prisma } from './db';
 import { todayPKT } from './format';
 import { gradeBand, pctOf } from './exams';
-import { getUpcomingEvents, type PortalEventItem } from './portal-events';
-import { getUpcomingLiveClasses, type PortalLiveClass } from './portal-live-classes';
-import type { Role } from '@prisma/client';
+import type { PortalEventItem } from './portal-events';
+import type { PortalLiveClass } from './portal-live-classes';
+import { AnnouncementAudience, type Role } from '@prisma/client';
 
 /** Weekday number 0=Sun … 6=Sat in Asia/Karachi (matches TimetableSlot.dayOfWeek). */
 export function weekdayPKT(d = new Date()): number {
@@ -174,7 +174,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   const { children, selected } = await resolvePortalChild(viewer, studentId);
   const today = todayPKT();
 
-  const [checkIn, checkOut, student] = await Promise.all([
+  const [checkIn, checkOut, student, kidSections] = await Promise.all([
     prisma.gateCheckIn.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
     prisma.gateCheckOut.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
     prisma.student.findUnique({
@@ -187,8 +187,18 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
         },
       },
     }),
+    // Grade/section ids of all linked children — lets the events/live-class
+    // queries below run as single queries instead of sequential chains.
+    prisma.student.findMany({
+      where: { id: { in: children.map((c) => c.id) } },
+      select: { gradeId: true, sectionId: true, grade: { select: { schoolId: true } } },
+    }),
   ]);
   if (!student) throw new PortalError(404, 'Student not found.');
+  const kidGradeIds = [...new Set(kidSections.map((s) => s.gradeId))];
+  const kidSectionIds = [...new Set(kidSections.map((s) => s.sectionId))];
+  const schoolId = kidSections[0]?.grade.schoolId;
+  if (!schoolId) throw new PortalError(404, 'No children are linked to this account.');
 
   // ── which day to show: today when it has timetable/marks, else the latest
   // school day with period-attendance records for this section. This keeps the
@@ -296,7 +306,40 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
   })();
-  const [diaryRows, noticeRows, scheduleRows, events, liveClasses] = await Promise.all([
+  // ── events + live classes as single queries (no sequential chains).
+  // Audience rules mirror lib/portal-events.ts and lib/portal-live-classes.ts:
+  // PARENT → ALL/PARENTS (+ their children's grades); STUDENT → ALL (+ own
+  // grade); support roles see all events and no live classes (unchanged).
+  const now = new Date();
+  const gradeAudienceOr =
+    kidGradeIds.length > 0
+      ? [{ audience: AnnouncementAudience.GRADES, gradeId: { in: kidGradeIds } }]
+      : [];
+  const eventWhere: Record<string, unknown> =
+    viewer.role === 'PARENT'
+      ? {
+          schoolId,
+          date: { gte: now },
+          OR: [{ audience: { in: [AnnouncementAudience.ALL, AnnouncementAudience.PARENTS] } }, ...gradeAudienceOr],
+        }
+      : viewer.role === 'STUDENT'
+        ? {
+            schoolId,
+            date: { gte: now },
+            OR: [{ audience: AnnouncementAudience.ALL }, ...gradeAudienceOr],
+          }
+        : { schoolId, date: { gte: now } };
+  const liveFrom = new Date(now.getTime() - 30 * 60 * 1000);
+  const liveTo = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const liveClassWhere: Record<string, unknown> | null =
+    (viewer.role === 'PARENT' || viewer.role === 'STUDENT') && kidSectionIds.length > 0
+      ? {
+          startsAt: { gte: liveFrom, lte: liveTo },
+          sectionId: { in: kidSectionIds },
+        }
+      : null;
+
+  const [diaryRows, noticeRows, scheduleRows, eventRows, liveClassRows] = await Promise.all([
     prisma.diaryEntry.findMany({
       where: { sectionId: student.sectionId, date: { gte: weekAgo } },
       include: {
@@ -323,9 +366,45 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       orderBy: { date: 'asc' },
       take: 8,
     }),
-    getUpcomingEvents(viewer.id, viewer.role, 3),
-    getUpcomingLiveClasses(viewer.id, viewer.role, 3),
+    prisma.schoolEvent.findMany({
+      where: eventWhere,
+      include: { grade: { select: { name: true } } },
+      orderBy: { date: 'asc' },
+      take: 3,
+    }),
+    liveClassWhere
+      ? prisma.liveClass.findMany({
+          where: liveClassWhere,
+          include: {
+            subject: { select: { name: true } },
+            section: { select: { name: true, grade: { select: { name: true } } } },
+            teacher: { include: { user: { select: { name: true } } } },
+          },
+          orderBy: { startsAt: 'asc' },
+          take: 3,
+        })
+      : Promise.resolve([]),
   ]);
+  const events: PortalEventItem[] = eventRows.map((e) => ({
+    id: e.id,
+    title: e.title,
+    description: e.description,
+    date: e.date,
+    endDate: e.endDate,
+    audience: e.audience,
+    venue: e.venue,
+    gradeName: e.grade?.name ?? null,
+  }));
+  const liveClasses: PortalLiveClass[] = liveClassRows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    meetingUrl: c.meetingUrl,
+    startsAt: c.startsAt,
+    endsAt: c.endsAt,
+    subject: c.subject?.name ?? null,
+    sectionLabel: `${c.section.grade.name} · Section ${c.section.name}`,
+    teacher: c.teacher.user?.name ?? 'Teacher',
+  }));
 
   return {
     student: selected,
