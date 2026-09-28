@@ -294,7 +294,7 @@ export default async function PortalPage({
                       <TD>
                         <Badge variant={r.grade === 'F' ? 'absent' : 'info'}>{r.grade}</Badge>
                       </TD>
-                      <TD className="max-w-[220px] truncate">{r.remarks ?? '—'}</TD>
+                      <TD className="max-w-[220px] truncate" title={r.remarks ?? ''}>{r.remarks ?? '—'}</TD>
                     </TRow>
                   ))}
                 </TBody>

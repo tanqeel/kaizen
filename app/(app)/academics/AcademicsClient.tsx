@@ -564,7 +564,7 @@ export function AcademicsClient({
           <Select label="Subject" required value={slotForm.subjectId} onChange={(e) => setSlotForm({ ...slotForm, subjectId: e.target.value })} placeholder="Select subject" options={subjects.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))} />
           <Select label="Teacher" required value={slotForm.teacherId} onChange={(e) => setSlotForm({ ...slotForm, teacherId: e.target.value })} placeholder="Select teacher" options={teachers.map((t) => ({ value: t.id, label: t.name }))} />
           <Input label="Room" value={slotForm.room} onChange={(e) => setSlotForm({ ...slotForm, room: e.target.value })} placeholder="e.g. R-5A" maxLength={20} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
             <Input label="Start" required type="time" value={slotForm.startTime} onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })} />
             <Input label="End" required type="time" value={slotForm.endTime} onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })} />
           </div>

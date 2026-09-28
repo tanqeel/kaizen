@@ -115,7 +115,7 @@ function LoginForm() {
               onClick={() => setShowPassword((s) => !s)}
               aria-pressed={showPassword}
               disabled={busy !== null}
-              className="inline-flex min-h-[32px] cursor-pointer items-center gap-1.5 rounded px-1 text-xs font-medium text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
+              className="inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded px-1 text-xs font-medium text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
             >
               <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} />
               {showPassword ? 'Hide password' : 'Show password'}

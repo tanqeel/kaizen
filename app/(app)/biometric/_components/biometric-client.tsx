@@ -310,7 +310,7 @@ function SimulatorPanel({ terminals, onScanned }: { terminals: Terminal[]; onSca
 
         <div>
           <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Scan method</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
             {SCAN_METHODS.map((m) => (
               <button
                 key={m.value}

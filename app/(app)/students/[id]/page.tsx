@@ -142,8 +142,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                   ['Address', student.address ?? '—'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3">
-                    <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
-                    <dd className="tnum text-right font-medium text-slate-900 dark:text-white">{v}</dd>
+                    <dt className="shrink-0 text-slate-500 dark:text-slate-400">{k}</dt>
+                    <dd className="tnum min-w-0 text-right break-words font-medium text-slate-900 dark:text-white">{v}</dd>
                   </div>
                 ))}
               </dl>

@@ -132,7 +132,7 @@ export function StudentDirectoryClient({ grades }: { grades: GradeOption[] }) {
                   <tr key={r.id} className="border-b border-slate-200 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
                     <td className="tnum px-4 py-3 font-medium text-slate-900 dark:text-white">{r.admissionNo}</td>
                     <td className="px-4 py-3">
-                      <Link href={`/students/${r.id}`} className="font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300">
+                      <Link href={`/students/${r.id}`} className="inline-block min-h-[44px] py-2 font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300">
                         {r.name}
                       </Link>
                     </td>

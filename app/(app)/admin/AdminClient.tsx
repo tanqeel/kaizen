@@ -197,16 +197,21 @@ function AdminInner({ initialUsers, providers, activity, selfId }: AdminClientPr
                       disabled={toggling === u.id || u.id === selfId}
                       onClick={() => toggleUser(u)}
                       title={u.id === selfId ? 'You cannot deactivate your own account' : undefined}
-                      className={`relative inline-flex h-[32px] w-[58px] min-h-[44px] shrink-0 cursor-pointer items-center rounded-full px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                        u.isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
+                      className="flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-lg px-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <span
                         aria-hidden="true"
-                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
-                          u.isActive ? 'translate-x-[26px]' : 'translate-x-0'
+                        className={`relative inline-flex h-[32px] w-[58px] items-center rounded-full px-1 transition-colors ${
+                          u.isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
                         }`}
-                      />
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                            u.isActive ? 'translate-x-[26px]' : 'translate-x-0'
+                          }`}
+                        />
+                      </span>
                     </button>
                   </TD>
                 </TRow>

@@ -675,7 +675,7 @@ export function ExamsClient({
                               <TD className="tnum">{r.total}</TD>
                               <TD className="tnum">{r.pct === null ? '—' : `${r.pct}%`}</TD>
                               <TD>{r.grade === null ? <Badge variant="neutral">Not entered</Badge> : <Badge variant={r.grade === 'F' ? 'absent' : 'info'}>{r.grade}</Badge>}</TD>
-                              <TD className="max-w-[200px] truncate">{r.remarks ?? '—'}</TD>
+                              <TD className="max-w-[200px] truncate" title={r.remarks ?? ''}>{r.remarks ?? '—'}</TD>
                             </TRow>
                           ))}
                           {report.overall && (

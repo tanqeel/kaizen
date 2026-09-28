@@ -328,7 +328,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-600 px-4 py-2.5 text-sm text-white dark:bg-brand-500">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-600 px-4 py-2.5 text-sm break-words text-white dark:bg-brand-500">
           {message.content}
         </div>
       </div>
@@ -337,7 +337,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const badge = message.providerLabel ?? historicBadge(message.toolsUsed);
   return (
     <div className="flex justify-start">
-      <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200">
+      <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed break-words text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200">
         <div className="mb-1 flex items-center gap-2">
           <Icon name="sparkles" size={14} className="text-brand-600 dark:text-brand-400" />
           <Badge variant={providerBadgeVariant(badge)}>{badge}</Badge>

@@ -589,7 +589,7 @@ export function Stat({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">{label}</p>
-          <p className="tnum mt-1 truncate text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
+          <p title={String(value)} className="tnum mt-1 truncate text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
           {sub && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{sub}</p>}
         </div>
         {icon && (

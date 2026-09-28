@@ -296,7 +296,7 @@ function TeacherDashboard({ data }: { data: DashboardSummary }) {
                     <Icon name="clock" size={18} className="text-amber-700 dark:text-amber-300" />
                     <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{p.label}</p>
                   </div>
-                  <Link href="/attendance">
+                  <Link href="/attendance" className="flex min-h-[44px] items-center">
                     <Badge variant="pending">Submit</Badge>
                   </Link>
                 </div>
@@ -372,11 +372,11 @@ function StudentDashboard({ data }: { data: DashboardSummary }) {
               <div className="flex flex-col gap-2">
                 {s.upcomingExams.map((e, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{e.subject}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{e.subject}</p>
                       <p className="tnum text-xs text-slate-500 dark:text-slate-400">{e.date} · {e.time}</p>
                     </div>
-                    <Badge variant="info" className="tnum">{e.totalMarks} marks</Badge>
+                    <Badge variant="info" className="tnum shrink-0">{e.totalMarks} marks</Badge>
                   </div>
                 ))}
               </div>

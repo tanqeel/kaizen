@@ -213,7 +213,7 @@ export function Header({
         {/* pl-16 on mobile leaves room for the fixed hamburger */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{schoolName}</p>
-          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{sessionLabel}</p>
+          <p className="hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">{sessionLabel}</p>
         </div>
 
         {isDemo && (

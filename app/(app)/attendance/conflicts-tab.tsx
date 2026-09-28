@@ -166,7 +166,7 @@ export function ConflictsTab() {
                   {rows.map((r) => (
                     <tr key={r.id} className="border-b border-slate-200 align-top last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
                       <td className="px-4 py-3">
-                        <Link href={`/students/${r.student.id}`} className="font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300">
+                        <Link href={`/students/${r.student.id}`} className="inline-block min-h-[44px] py-2 font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300">
                           {r.student.name}
                         </Link>
                         <p className="tnum text-xs text-slate-500 dark:text-slate-400">
