@@ -181,20 +181,24 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   const { children, selected } = await resolvePortalChild(viewer, studentId);
   const today = todayPKT();
 
-  const [checkIn, checkOut, student, gradeSchool, todayMarks, latestMark, todaySlots] = await Promise.all([
+  // NOTE: vouchers/examResults are fetched as separate parallel queries instead
+  // of nested `include`s — Prisma executes includes as sequential round trips,
+  // which stalls the whole batch on high-latency connections.
+  const [checkIn, checkOut, student, gradeSchool, vouchers, examResults, todayMarks, latestMark, todaySlots] = await Promise.all([
     prisma.gateCheckIn.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
     prisma.gateCheckOut.findUnique({ where: { studentId_date: { studentId: selected.id, date: today } } }),
-    prisma.student.findUnique({
-      where: { id: selected.id },
-      include: {
-        vouchers: { include: { payments: true }, orderBy: [{ year: 'desc' }, { month: 'desc' }] },
-        examResults: {
-          include: { examSchedule: { include: { subject: true, examTerm: true } } },
-          orderBy: { examSchedule: { date: 'desc' } },
-        },
-      },
-    }),
+    prisma.student.findUnique({ where: { id: selected.id } }),
     prisma.grade.findUnique({ where: { id: selected.gradeId }, select: { schoolId: true } }),
+    prisma.feeVoucher.findMany({
+      where: { studentId: selected.id },
+      include: { payments: true },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+    }),
+    prisma.examResult.findMany({
+      where: { studentId: selected.id },
+      include: { examSchedule: { include: { subject: true, examTerm: true } } },
+      orderBy: { examSchedule: { date: 'desc' } },
+    }),
     // ── which day to show: today when it has timetable/marks, else the latest
     // school day with period-attendance records for this section. This keeps the
     // portal useful every day instead of going blank when "today" has no rows
@@ -251,7 +255,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
 
   // ── fee snapshot (OVERDUE computed, never stored) ──
   const todayStart = new Date(`${today}T00:00:00+05:00`);
-  const vouchers = student.vouchers.map((v) => {
+  const voucherCards = vouchers.map((v) => {
     const paidAmount = v.payments.reduce((sum, p) => sum + p.amount, 0);
     const balance = v.totalAmount - v.discountAmount + v.fineAmount - paidAmount;
     const overdue = v.dueDate < todayStart && v.status !== 'PAID';
@@ -265,16 +269,16 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       overdue,
     };
   });
-  const totalOutstanding = vouchers.filter((v) => v.status !== 'PAID').reduce((s, v) => s + v.balance, 0);
+  const totalOutstanding = voucherCards.filter((v) => v.status !== 'PAID').reduce((s, v) => s + v.balance, 0);
 
   // ── exam results summary: latest term with real results ──
   let exams: PortalSummary['exams'] = null;
-  if (student.examResults.length > 0) {
-    const latestTermId = student.examResults
+  if (examResults.length > 0) {
+    const latestTermId = examResults
       .slice()
       .sort((a, b) => +b.examSchedule.examTerm.startDate - +a.examSchedule.examTerm.startDate)[0]
       .examSchedule.examTermId;
-    const rows = student.examResults
+    const rows = examResults
       .filter((r) => r.examSchedule.examTermId === latestTermId)
       .sort((a, b) => +a.examSchedule.date - +b.examSchedule.date)
       .map((r) => {
@@ -290,7 +294,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       });
     exams = {
       termId: latestTermId,
-      termName: student.examResults.find((r) => r.examSchedule.examTermId === latestTermId)!.examSchedule.examTerm.name,
+      termName: examResults.find((r) => r.examSchedule.examTermId === latestTermId)!.examSchedule.examTerm.name,
       rows,
     };
   }
@@ -441,7 +445,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       totalMarks: s.totalMarks,
       termName: s.examTerm.name,
     })),
-    fees: { vouchers, totalOutstanding },
+    fees: { vouchers: voucherCards, totalOutstanding },
     exams,
     notificationsNote:
       'Arrival, departure and absence alerts for your child are logged to the school notification log ' +
