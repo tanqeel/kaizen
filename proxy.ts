@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/demo', '/offline', '/manifest.webmanifest'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/demo', '/api/health', '/offline', '/manifest.webmanifest'];
 
 /**
  * Optimistic auth check: redirects unauthenticated page/API traffic to /login.
