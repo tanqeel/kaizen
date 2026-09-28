@@ -1,24 +1,16 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { pktDate } from '@/lib/format';
-import { getUpcomingEvents } from '@/lib/portal-events';
+import type { PortalEventItem } from '@/lib/portal-events';
 
 /**
- * Upcoming events card for the parent portal. Self-contained: looks up the
- * user's role, fetches the next 3 audience-relevant upcoming events, and
- * renders nothing when there are none. (Wiring into /portal is the
- * coordinator's job — this component only needs <UpcomingEventsCard userId={user.id} />.)
+ * Presentational portal card: renders the viewer's upcoming events.
+ * Data is fetched once inside getPortalSummary (same parallel batch as the
+ * rest of the portal) and passed in — this component does no fetching of
+ * its own. Renders nothing when there are none.
  */
-export async function UpcomingEventsCard({ userId }: { userId: string }) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  if (!user) return null;
-
-  const events = await getUpcomingEvents(userId, user.role, 3);
+export function UpcomingEventsCard({ events }: { events: PortalEventItem[] }) {
   if (events.length === 0) return null;
 
   return (

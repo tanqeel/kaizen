@@ -323,10 +323,10 @@ export default async function PortalPage({
         </Card>
       </div>
 
-      {/* Upcoming events + live classes */}
+      {/* Upcoming events + live classes (pre-fetched in the summary batch) */}
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <UpcomingLiveClassesCard userId={user.id} />
-        <UpcomingEventsCard userId={user.id} />
+        <UpcomingLiveClassesCard classes={summary.liveClasses} />
+        <UpcomingEventsCard events={summary.events} />
       </div>
 
       {/* Fee snapshot */}

@@ -1,23 +1,16 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
-import { getUpcomingLiveClasses } from '@/lib/portal-live-classes';
 import { pktDateTime } from '@/lib/format';
+import type { PortalLiveClass } from '@/lib/portal-live-classes';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { Icon } from '@/components/icons';
 
 /**
- * Self-contained portal card: the viewer's live classes starting within the
- * next 48 hours (or started in the last 30 minutes). Renders nothing when the
- * viewer has none. Wired into /portal by the coordinator.
+ * Presentational portal card: renders the viewer's upcoming live classes.
+ * Data is fetched once inside getPortalSummary (same parallel batch as the
+ * rest of the portal) and passed in — this component does no fetching of
+ * its own. Renders nothing when there are none.
  */
-export async function UpcomingLiveClassesCard({ userId }: { userId: string }) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  if (!user) return null;
-
-  const classes = await getUpcomingLiveClasses(userId, user.role, 3);
+export function UpcomingLiveClassesCard({ classes }: { classes: PortalLiveClass[] }) {
   if (classes.length === 0) return null;
 
   return (

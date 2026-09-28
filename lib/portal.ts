@@ -1,6 +1,8 @@
 import { prisma } from './db';
 import { todayPKT } from './format';
 import { gradeBand, pctOf } from './exams';
+import { getUpcomingEvents, type PortalEventItem } from './portal-events';
+import { getUpcomingLiveClasses, type PortalLiveClass } from './portal-live-classes';
 import type { Role } from '@prisma/client';
 
 /** Weekday number 0=Sun … 6=Sat in Asia/Karachi (matches TimetableSlot.dayOfWeek). */
@@ -101,6 +103,9 @@ export interface PortalSummary {
     }>;
   } | null;
   notificationsNote: string;
+  /** Next audience-relevant events / live classes, fetched in the same batch. */
+  events: PortalEventItem[];
+  liveClasses: PortalLiveClass[];
 }
 
 const MONTHS = [
@@ -189,17 +194,17 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   // school day with period-attendance records for this section. This keeps the
   // portal useful every day instead of going blank when "today" has no rows
   // yet (the stale-demo-data problem), and it is labelled honestly in the UI.
-  const [todayMarks, latestMark] = await Promise.all([
+  const [todayMarks, latestMark, todaySlots] = await Promise.all([
     prisma.periodAttendance.count({ where: { studentId: selected.id, date: today } }),
     prisma.periodAttendance.findFirst({
       where: { sectionId: student.sectionId },
       orderBy: { date: 'desc' },
       select: { date: true },
     }),
+    prisma.timetableSlot.count({
+      where: { sectionId: student.sectionId, dayOfWeek: weekdayPKT() },
+    }),
   ]);
-  const todaySlots = await prisma.timetableSlot.count({
-    where: { sectionId: student.sectionId, dayOfWeek: weekdayPKT() },
-  });
   const displayDate = todayMarks > 0 || todaySlots > 0 ? today : (latestMark?.date ?? today);
   const displayDateIsToday = displayDate === today;
   const displayWeekday = weekdayPKT(new Date(`${displayDate}T12:00:00+05:00`));
@@ -291,7 +296,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
   })();
-  const [diaryRows, noticeRows, scheduleRows] = await Promise.all([
+  const [diaryRows, noticeRows, scheduleRows, events, liveClasses] = await Promise.all([
     prisma.diaryEntry.findMany({
       where: { sectionId: student.sectionId, date: { gte: weekAgo } },
       include: {
@@ -318,6 +323,8 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       orderBy: { date: 'asc' },
       take: 8,
     }),
+    getUpcomingEvents(viewer.id, viewer.role, 3),
+    getUpcomingLiveClasses(viewer.id, viewer.role, 3),
   ]);
 
   return {
@@ -361,5 +368,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
     notificationsNote:
       'Arrival, departure and absence alerts for your child are logged to the school notification log ' +
       'and shown in-app here. Make sure your phone number on file with the school office is current.',
+    events,
+    liveClasses,
   };
 }

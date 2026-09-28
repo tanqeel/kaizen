@@ -78,8 +78,7 @@ function AdminInner({ initialUsers, providers, activity, selfId }: AdminClientPr
   const [users, setUsers] = useState(initialUsers);
   const [toggling, setToggling] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const [restoring, setRestoring] = useState(false);
-  const [restoreOutput, setRestoreOutput] = useState<string | null>(null);
+  // (demo-data restore removed: production must never be wiped/reseeded from the web UI)
 
   async function toggleUser(u: AdminUser) {
     if (u.id === selfId) {
@@ -101,31 +100,6 @@ function AdminInner({ initialUsers, providers, activity, selfId }: AdminClientPr
       setNotice({ kind: 'err', text: err instanceof Error ? err.message : 'Toggle failed' });
     } finally {
       setToggling(null);
-    }
-  }
-
-  async function restoreDemo() {
-    const ok = await confirm({
-      title: 'Restore demo state?',
-      message:
-        'This wipes ALL current data — students, attendance, fees, everything — and reseeds the clean demo school. This cannot be undone.',
-      confirmLabel: 'Wipe & reseed',
-    });
-    if (!ok) return;
-    setRestoring(true);
-    setRestoreOutput(null);
-    setNotice(null);
-    try {
-      const res = await fetch('/api/admin/restore', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Restore failed');
-      setNotice({ kind: 'ok', text: 'Demo state restored. Reload the page to see fresh data.' });
-      setRestoreOutput(data.output ?? '');
-    } catch (err) {
-      setNotice({ kind: 'err', text: err instanceof Error ? err.message : 'Restore failed' });
-      setRestoreOutput(null);
-    } finally {
-      setRestoring(false);
     }
   }
 
@@ -298,32 +272,6 @@ function AdminInner({ initialUsers, providers, activity, selfId }: AdminClientPr
           </CardContent>
         </Card>
       </div>
-
-      {/* Danger zone */}
-      <Card className="border-rose-300 dark:border-rose-900">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
-            <Icon name="alert-triangle" size={18} /> Danger zone
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            <strong>Restore demo state</strong> wipes all data and reseeds the clean demo school
-            (same as <span className="tnum">npx prisma db seed</span>). Use only on the demo
-            environment.
-          </p>
-          <div className="mt-4">
-            <Button variant="danger" loading={restoring} onClick={restoreDemo}>
-              <Icon name="refresh-cw" size={18} /> Restore demo state
-            </Button>
-          </div>
-          {restoreOutput && (
-            <pre className="tnum nice-scroll mt-4 max-h-64 overflow-auto rounded-lg bg-slate-950 p-4 text-xs text-slate-200">
-              {restoreOutput}
-            </pre>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

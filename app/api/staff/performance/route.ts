@@ -10,15 +10,21 @@ export interface TeacherPerformanceRow {
   employeeId: string;
   /** Weekly periods assigned to the teacher in the master timetable. */
   periodsTimetabled: number;
-  /** PeriodAttendance rows this teacher marked (via their user account). null when they have no login. */
+  /**
+   * Distinct registers this teacher marked in the last 30 PKT days, where a
+   * register = one (date, periodNo, sectionId, subjectId) marking event.
+   * null when they have no login.
+   */
   registersSubmitted: number | null;
-  /** Distinct PKT dates on which they submitted at least one register. null when they have no login. */
+  /** Distinct PKT dates in the last 30 days on which they submitted at least one register. null when they have no login. */
   registerDays: number | null;
   /**
-   * Submission rate = registersSubmitted ÷ (registerDays × periodsTimetabled),
-   * clamped at 100. This is register SUBMISSION, not on-time submission —
-   * markedAt time-of-day is not compared against slot times, so no on-time
-   * claim is made. null where it can't be computed.
+   * registersSubmitted ÷ timetable-expected registers in the same 30-day
+   * window × 100 (expected = teacher's slots whose weekday falls in the
+   * window). NOT clamped: values over 100 mean extra/cover periods were
+   * marked. This is register SUBMISSION, not on-time submission — markedAt
+   * is never compared against slot times, so no on-time claim is made.
+   * null where it can't be computed.
    */
   submissionRatePct: number | null;
   /** Average obtained/total × 100 across all ExamResults in the teacher's allocated subjects. null where no results. */
@@ -82,13 +88,16 @@ export async function GET(req: Request) {
   const rows: TeacherPerformanceRow[] = await Promise.all(
     teachers.map(async (t) => {
       const subjectIds = t.allocations.map((a) => a.subjectId);
-      const [timetabled, submitted, days, results, diary] = await Promise.all([
-        prisma.timetableSlot.count({ where: { teacherId: t.id } }),
-        t.userId ? prisma.periodAttendance.count({ where: { markedById: t.userId } }) : null,
+      const [slotDays, groups, results, diary] = await Promise.all([
+        prisma.timetableSlot.findMany({
+          where: { teacherId: t.id },
+          select: { dayOfWeek: true },
+        }),
         t.userId
-          ? prisma.periodAttendance
-              .findMany({ where: { markedById: t.userId }, select: { date: true }, distinct: ['date'] })
-              .then((rs) => rs.length)
+          ? prisma.periodAttendance.groupBy({
+              by: ['date', 'periodNo', 'sectionId', 'subjectId'],
+              where: { markedById: t.userId, date: { gte: thirtyDaysAgo } },
+            })
           : null,
         subjectIds.length === 0
           ? []
@@ -99,10 +108,27 @@ export async function GET(req: Request) {
         prisma.diaryEntry.count({ where: { teacherId: t.id, date: { gte: thirtyDaysAgo } } }),
       ]);
 
+      // One "register" = one (date, periodNo, sectionId, subjectId) marking
+      // event — NOT one per-student row.
+      const submitted = groups ? groups.length : null;
+      const days = groups ? new Set(groups.map((g) => g.date)).size : null;
+
+      // Expected registers in the window = teacher's slots whose weekday
+      // falls on a calendar day inside the window. Unclamped rate.
+      let expected = 0;
+      if (slotDays.length > 0) {
+        const counts = new Array(7).fill(0);
+        for (const s of slotDays) counts[s.dayOfWeek] += 1;
+        const start = new Date(`${thirtyDaysAgo}T00:00:00Z`);
+        for (let i = 0; i < 30; i++) {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i);
+          expected += counts[d.getUTCDay()];
+        }
+      }
       let submissionRatePct: number | null = null;
-      if (submitted !== null && days !== null && days > 0 && timetabled > 0) {
-        const expected = days * timetabled;
-        if (expected > 0) submissionRatePct = Math.min(100, Math.round((submitted / expected) * 100));
+      if (submitted !== null && expected > 0) {
+        submissionRatePct = Math.round((submitted / expected) * 100);
       }
 
       let classAvgPct: number | null = null;
@@ -117,7 +143,7 @@ export async function GET(req: Request) {
         teacherId: t.id,
         name: t.user?.name ?? '—',
         employeeId: t.employeeId,
-        periodsTimetabled: timetabled,
+        periodsTimetabled: slotDays.length,
         registersSubmitted: submitted,
         registerDays: days,
         submissionRatePct,
