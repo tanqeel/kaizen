@@ -461,6 +461,9 @@ model PeriodAttendance {
   markedAt   DateTime         @default(now())
 
   @@unique([sectionId, subjectId, date, periodNo, studentId])
+  @@index([sectionId, date])
+  @@index([studentId, date])
+  @@index([markedById, date])
 }
 
 model AttendanceConflict {
