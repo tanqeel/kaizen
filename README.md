@@ -2,7 +2,9 @@
 
 A complete, database-backed school ERP: dashboard, students, gate + lecture attendance (with conflict detection), parent portal, academics, exams, fees, finance, HR, biometric, communications, and a role-aware **Kaizen AI** assistant — for Super Admin, Principal, Teacher, Staff, Parent, and Student roles.
 
-Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Prisma · SQLite**.
+Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Prisma · PostgreSQL**.
+
+**Live:** https://kaizen-topaz-kappa.vercel.app — auto-deploys from this repo (`main` branch).
 
 ## Quick start (fully functional in ~3 minutes)
 
