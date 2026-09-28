@@ -178,7 +178,11 @@ export async function resolvePortalChild(
 
 /** Full portal summary for one child. Never invents records — empty states are honest. */
 export async function getPortalSummary(viewer: PortalViewer, studentId?: string): Promise<PortalSummary> {
+  // TEMP timing — remove after diagnosis
+  const __t: Record<string, number> = {};
+  const __s = Date.now();
   const { children, selected } = await resolvePortalChild(viewer, studentId);
+  __t['resolveChild'] = Date.now() - __s;
   const today = todayPKT();
 
   // NOTE: vouchers/examResults are fetched as separate parallel queries instead
@@ -213,6 +217,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       where: { sectionId: selected.sectionId, dayOfWeek: weekdayPKT() },
     }),
   ]);
+  __t['batch2-main9'] = Date.now() - __s - __t['resolveChild'];
   if (!student) throw new PortalError(404, 'Student not found.');
   const kidGradeIds = [...new Set(children.map((c) => c.gradeId))];
   const kidSectionIds = [...new Set(children.map((c) => c.sectionId))];
@@ -223,6 +228,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
   const displayWeekday = weekdayPKT(new Date(`${displayDate}T12:00:00+05:00`));
 
   // ── subject journey: timetable + period attendance for the display day ──
+  const __s2 = Date.now();
   const [slots, marks] = await Promise.all([
     prisma.timetableSlot.findMany({
       where: { sectionId: student.sectionId, dayOfWeek: displayWeekday },
@@ -234,6 +240,8 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       select: { periodNo: true, subjectId: true, status: true },
     }),
   ]);
+  __t['batch2-main'] = Date.now() - __s - __t['resolveChild'];
+  __t['batch3-journey'] = Date.now() - __s2;
   const journey = slots.map((s) => {
     // Exact (period, subject) match first; fall back to any row for the period.
     const m =
@@ -342,6 +350,7 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
         }
       : null;
 
+  const __s3 = Date.now();
   const [diaryRows, noticeRows, scheduleRows, eventRows, liveClassRows] = await Promise.all([
     prisma.diaryEntry.findMany({
       where: { sectionId: student.sectionId, date: { gte: weekAgo } },
@@ -409,7 +418,10 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
     teacher: c.teacher.user?.name ?? 'Teacher',
   }));
 
-  return {
+  __t['batch4-cards'] = Date.now() - __s3;
+  __t['total'] = Date.now() - __s;
+  // TEMP — attach timing to returned object for diagnosis
+  const __summary = {
     student: selected,
     children,
     date: today,
@@ -452,5 +464,8 @@ export async function getPortalSummary(viewer: PortalViewer, studentId?: string)
       'and shown in-app here. Make sure your phone number on file with the school office is current.',
     events,
     liveClasses,
+    // TEMP diagnosis field
+    __timing: __t,
   };
+  return __summary as unknown as PortalSummary;
 }
