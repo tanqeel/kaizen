@@ -1,4 +1,5 @@
-import type { Role, User } from '@prisma/client';
+import type { Role } from '@prisma/client';
+import type { SafeUser } from './auth';
 import { prisma } from './db';
 import { todayPKT } from './format';
 import { balanceDue, displayStatus } from './fees';
@@ -50,7 +51,7 @@ function sectionLabel(g: string, s: string): string {
   return `${g} – Section ${s}`;
 }
 
-export async function getDashboardSummary(user: User): Promise<DashboardSummary> {
+export async function getDashboardSummary(user: SafeUser): Promise<DashboardSummary> {
   const today = todayPKT();
   const dow = dayOfWeekPKT(today);
   const summary: DashboardSummary = { role: user.role, date: today };

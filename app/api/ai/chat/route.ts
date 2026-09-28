@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, type SafeUser } from '@/lib/auth';
 import { requirePermission, type Permission } from '@/lib/rbac';
 import {
   classifyIntent,
@@ -10,10 +10,9 @@ import {
   generalGuidance,
 } from '@/lib/ai/engine';
 import { buildSystemPrompt, generateText, type AiProviderId } from '@/lib/ai/providers';
-import type { User } from '@prisma/client';
 
 /** 401/403 guard for API routes. Returns the user or a JSON error response. */
-async function guard(perm: Permission): Promise<{ user: User } | NextResponse> {
+async function guard(perm: Permission): Promise<{ user: SafeUser } | NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {

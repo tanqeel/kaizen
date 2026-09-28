@@ -7,6 +7,14 @@ import type { User } from '@prisma/client';
 export const SESSION_COOKIE = 'kaizen_session';
 const SESSION_DAYS = 7;
 
+/** User record safe to serialize to the client — never includes the password hash. */
+export type SafeUser = Omit<User, 'passwordHash'>;
+
+function stripHash(u: User): SafeUser {
+  const { passwordHash: _hash, ...safe } = u;
+  return safe;
+}
+
 export async function createSession(userId: string, isDemo = false): Promise<void> {
   const token = newSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400_000);
@@ -21,7 +29,7 @@ export async function createSession(userId: string, isDemo = false): Promise<voi
   });
 }
 
-export async function getSessionUser(): Promise<User | null> {
+export async function getSessionUser(): Promise<SafeUser | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -30,17 +38,17 @@ export async function getSessionUser(): Promise<User | null> {
     include: { user: true },
   });
   if (!st || st.expiresAt < new Date() || !st.user.isActive) return null;
-  return st.user;
+  return stripHash(st.user);
 }
 
-export async function requireUser(): Promise<User> {
+export async function requireUser(): Promise<SafeUser> {
   const u = await getSessionUser();
   if (!u) redirect('/login');
   return u;
 }
 
 /** Full session: user + whether this session was created via one-click demo login. */
-export async function getSession(): Promise<{ user: User; isDemo: boolean } | null> {
+export async function getSession(): Promise<{ user: SafeUser; isDemo: boolean } | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -49,7 +57,7 @@ export async function getSession(): Promise<{ user: User; isDemo: boolean } | nu
     include: { user: true },
   });
   if (!st || st.expiresAt < new Date() || !st.user.isActive) return null;
-  return { user: st.user, isDemo: st.isDemo };
+  return { user: stripHash(st.user), isDemo: st.isDemo };
 }
 
 export async function destroySession(): Promise<void> {

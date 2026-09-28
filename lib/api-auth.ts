@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser } from './auth';
+import { getSessionUser, type SafeUser } from './auth';
 import { can, type Permission } from './rbac';
-import type { User } from '@prisma/client';
 
-export type ApiAuth = { user: User; error?: undefined } | { user?: undefined; error: NextResponse };
+export type ApiAuth = { user: SafeUser; error?: undefined } | { user?: undefined; error: NextResponse };
 
 /**
  * Server-side auth + RBAC for API route handlers.

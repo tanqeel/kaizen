@@ -10,7 +10,8 @@
  * check-in — 28 Sep 2026"). Every data answer must state that it comes from
  * school records.
  */
-import type { PrismaClient, Role, User } from '@prisma/client';
+import type { PrismaClient, Role } from '@prisma/client';
+import type { SafeUser } from '../auth';
 import { pkr, todayPKT, pktDate, pktTime } from '../format';
 
 // ── Intent taxonomy ─────────────────────────────────────────────────────────
@@ -141,7 +142,7 @@ const RECORDS_NOTE = '\n\nThis answer comes from the school database, not from m
 
 // ── Role-scoped record resolution ───────────────────────────────────────────
 
-async function childrenOfParent(db: PrismaClient, user: User) {
+async function childrenOfParent(db: PrismaClient, user: SafeUser) {
   const parent = await db.parent.findUnique({
     where: { userId: user.id },
     include: { children: { include: { student: { include: { grade: true, section: true } } } } },
@@ -149,14 +150,14 @@ async function childrenOfParent(db: PrismaClient, user: User) {
   return parent ? parent.children.map((c) => c.student) : [];
 }
 
-async function studentOfUser(db: PrismaClient, user: User) {
+async function studentOfUser(db: PrismaClient, user: SafeUser) {
   return db.student.findUnique({
     where: { userId: user.id },
     include: { grade: true, section: true },
   });
 }
 
-async function teacherOfUser(db: PrismaClient, user: User) {
+async function teacherOfUser(db: PrismaClient, user: SafeUser) {
   return db.teacher.findUnique({ where: { userId: user.id } });
 }
 
@@ -188,7 +189,7 @@ async function monthAttendancePct(
 
 // ── Data tools ──────────────────────────────────────────────────────────────
 
-async function runChildAttendance(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runChildAttendance(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const children = await childrenOfParent(db, user);
   if (children.length === 0) {
     return {
@@ -225,7 +226,7 @@ async function runChildAttendance(db: PrismaClient, user: User): Promise<DataAns
   };
 }
 
-async function runChildArrival(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runChildArrival(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const children = await childrenOfParent(db, user);
   if (children.length === 0) {
     return {
@@ -274,7 +275,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-async function runChildFees(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runChildFees(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const children = await childrenOfParent(db, user);
   if (children.length === 0) {
     return {
@@ -315,7 +316,7 @@ async function runChildFees(db: PrismaClient, user: User): Promise<DataAnswer> {
   };
 }
 
-async function runChildResults(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runChildResults(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const children = await childrenOfParent(db, user);
   if (children.length === 0) {
     return {
@@ -475,7 +476,7 @@ async function runPendingSubmissions(db: PrismaClient): Promise<DataAnswer> {
   return { reply, sources: sourceLine(`${slots.length} timetabled sections, period attendance rows`) };
 }
 
-async function runMySchedule(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runMySchedule(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const teacher = await teacherOfUser(db, user);
   if (!teacher) {
     return {
@@ -503,7 +504,7 @@ async function runMySchedule(db: PrismaClient, user: User): Promise<DataAnswer> 
   return { reply, sources: sourceLine(`${slots.length} timetable slots`) };
 }
 
-async function runClassAbsentees(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runClassAbsentees(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const teacher = await teacherOfUser(db, user);
   if (!teacher) {
     return {
@@ -545,7 +546,7 @@ async function runClassAbsentees(db: PrismaClient, user: User): Promise<DataAnsw
   return { reply, sources: sourceLine(`${absent.length} ABSENT period records in your sections`) };
 }
 
-async function runMyAttendance(db: PrismaClient, user: User): Promise<DataAnswer> {
+async function runMyAttendance(db: PrismaClient, user: SafeUser): Promise<DataAnswer> {
   const student = await studentOfUser(db, user);
   if (!student) {
     return {
@@ -689,7 +690,7 @@ export interface IntentResult {
  */
 export async function runIntent(
   db: PrismaClient,
-  user: User,
+  user: SafeUser,
   intent: Intent,
 ): Promise<IntentResult> {
   if (!intentAllowed(intent, user.role)) {

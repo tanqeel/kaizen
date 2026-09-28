@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, type SafeUser } from '@/lib/auth';
 import { requirePermission } from '@/lib/rbac';
-import type { User } from '@prisma/client';
 
-async function superAdminOnly(): Promise<{ user: User } | NextResponse> {
+async function superAdminOnly(): Promise<{ user: SafeUser } | NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
