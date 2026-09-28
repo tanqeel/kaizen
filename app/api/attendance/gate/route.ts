@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { pktTime, todayPKT } from '@/lib/format';
+import { invalidateDashboard } from '@/lib/dashboard';
 import type { CheckInMethod } from '@prisma/client';
 
 const METHODS: CheckInMethod[] = ['FINGERPRINT', 'FACE', 'RFID', 'MANUAL'];
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
     });
   }
 
+  invalidateDashboard();
   return NextResponse.json(
     { ok: true, checkIn: { id: checkIn.id, date: today, checkInDisplay: pktTime(now) } },
     { status: 201 },

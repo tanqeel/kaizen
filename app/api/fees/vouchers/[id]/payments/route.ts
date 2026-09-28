@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { balanceDue, effectiveTotal, paidSum } from '@/lib/fees';
 import { pkr } from '@/lib/format';
+import { invalidateDashboard } from '@/lib/dashboard';
 import { PaymentMethod } from '@prisma/client';
 
 const METHODS = new Set(Object.values(PaymentMethod));
@@ -72,6 +73,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const newPaid = paid + amount;
   const status = newPaid >= payable ? 'PAID' : 'PARTIAL';
   await prisma.feeVoucher.update({ where: { id: voucher.id }, data: { status } });
+  invalidateDashboard();
 
   return NextResponse.json({
     ok: true,

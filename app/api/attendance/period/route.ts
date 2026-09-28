@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { todayPKT } from '@/lib/format';
 import { dayOfWeekPKT, detectConflicts, notifyAbsences, sectionDayComplete } from '@/lib/attendance';
+import { invalidateDashboard } from '@/lib/dashboard';
 import type { AttendanceStatus } from '@prisma/client';
 
 const STATUSES: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'PENDING'];
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
   const conflictsDetected = await detectConflicts(date);
   const complete = await sectionDayComplete(sectionId, date);
   const notificationsSent = complete ? await notifyAbsences(sectionId, date) : 0;
+  invalidateDashboard();
 
   return NextResponse.json({
     ok: true,

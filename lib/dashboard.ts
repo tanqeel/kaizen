@@ -1,4 +1,5 @@
 import type { Role } from '@prisma/client';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import type { SafeUser } from './auth';
 import { prisma } from './db';
 import { todayPKT } from './format';
@@ -51,7 +52,7 @@ function sectionLabel(g: string, s: string): string {
   return `${g} – Section ${s}`;
 }
 
-export async function getDashboardSummary(user: SafeUser): Promise<DashboardSummary> {
+export async function computeDashboardSummary(user: SafeUser): Promise<DashboardSummary> {
   const today = todayPKT();
   const dow = dayOfWeekPKT(today);
   const summary: DashboardSummary = { role: user.role, date: today };
@@ -354,6 +355,29 @@ export async function getDashboardSummary(user: SafeUser): Promise<DashboardSumm
   }
 
   return summary;
+}
+
+/**
+ * Cached dashboard summary: 60s TTL per user. Dashboard numbers change a
+ * few times a day (attendance submissions, fee payments); a minute of
+ * staleness is invisible on a dashboard, but the cache turns every repeat
+ * load from ~4s of cross-region DB round trips into a cache hit (~0.5s).
+ * Write paths (attendance submit, gate check-in, fee payment) call
+ * invalidateDashboard() for immediate freshness.
+ */
+export async function getDashboardSummary(user: SafeUser): Promise<DashboardSummary> {
+  return unstable_cache(
+    async () => computeDashboardSummary(user),
+    ['dashboard-summary', user.id],
+    { revalidate: 60, tags: ['dashboard-summary'] },
+  )();
+}
+
+/** Drop all cached dashboard summaries (call after attendance/fee/marks writes). */
+export function invalidateDashboard(): void {
+  // expire: 0 → next dashboard load blocks until fresh data is computed,
+  // so a teacher who just submitted attendance never sees stale numbers.
+  revalidateTag('dashboard-summary', { expire: 0 });
 }
 
 /** Compact display status for vouchers (re-exported convenience). */

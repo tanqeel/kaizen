@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
 import { teacherGradeIds, parentChildIds, ownStudentId } from '@/lib/exams';
+import { invalidateDashboard } from '@/lib/dashboard';
 
 /**
  * Scope the student list of a schedule's grade to the viewer.
@@ -149,5 +150,6 @@ export async function POST(req: Request) {
       }),
     ),
   );
+  invalidateDashboard();
   return NextResponse.json({ ok: true, saved: clean.length });
 }
