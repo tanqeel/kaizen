@@ -7,6 +7,7 @@ import { DEMO_LOGINS } from '@/lib/format';
 import { Icon } from './icons';
 import { Badge } from './ui';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -238,6 +239,7 @@ export function Header({
           </span>
         </div>
 
+        <NotificationBell />
         <ThemeToggle />
         <LogoutButton />
       </div>
