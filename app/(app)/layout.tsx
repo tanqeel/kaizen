@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { unstable_cache } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { can, NAV_ITEMS } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
@@ -6,25 +7,39 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 
 /**
+ * School header info (name + current academic session label). Changes
+ * extremely rarely, so it's cached for 5 minutes instead of querying
+ * the database on every single page navigation.
+ */
+const getSchoolHeader = unstable_cache(
+  async () => {
+    const [school, academicSession] = await Promise.all([
+      prisma.school.findFirst(),
+      prisma.academicSession.findFirst({ where: { isCurrent: true } }),
+    ]);
+    return {
+      schoolName: school?.name ?? 'Kaizen Model School',
+      sessionLabel: academicSession
+        ? `Academic session ${academicSession.name}${academicSession.term ? ` · ${academicSession.term}` : ''}`
+        : 'School portal',
+    };
+  },
+  ['school-header'],
+  { revalidate: 300 },
+);
+
+/**
  * Authenticated app shell. Guards every page inside app/(app)/:
  * getSession() redirects to /login when unauthenticated; each page adds its
  * own requirePagePermission() check on top.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // Single session lookup (was: requireUser() + getSession() = 2 identical DB round trips).
+  // Single memoized session lookup per request (shared with pages via React cache()).
   const session = await getSession();
   if (!session) redirect('/login');
   const user = session.user;
 
-  const [school, academicSession] = await Promise.all([
-    prisma.school.findFirst(),
-    prisma.academicSession.findFirst({ where: { isCurrent: true } }),
-  ]);
-
-  const schoolName = school?.name ?? 'Kaizen Model School';
-  const sessionLabel = academicSession
-    ? `Academic session ${academicSession.name}${academicSession.term ? ` · ${academicSession.term}` : ''}`
-    : 'School portal';
+  const { schoolName, sessionLabel } = await getSchoolHeader();
 
   const nav = NAV_ITEMS.filter((item) => can(user.role, item.perm));
 

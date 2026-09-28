@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { prisma } from './db';
@@ -29,26 +30,7 @@ export async function createSession(userId: string, isDemo = false): Promise<voi
   });
 }
 
-export async function getSessionUser(): Promise<SafeUser | null> {
-  const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const st = await prisma.sessionToken.findUnique({
-    where: { token },
-    include: { user: true },
-  });
-  if (!st || st.expiresAt < new Date() || !st.user.isActive) return null;
-  return stripHash(st.user);
-}
-
-export async function requireUser(): Promise<SafeUser> {
-  const u = await getSessionUser();
-  if (!u) redirect('/login');
-  return u;
-}
-
-/** Full session: user + whether this session was created via one-click demo login. */
-export async function getSession(): Promise<{ user: SafeUser; isDemo: boolean } | null> {
+async function loadSession(): Promise<{ user: SafeUser; isDemo: boolean } | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -58,6 +40,24 @@ export async function getSession(): Promise<{ user: SafeUser; isDemo: boolean } 
   });
   if (!st || st.expiresAt < new Date() || !st.user.isActive) return null;
   return { user: stripHash(st.user), isDemo: st.isDemo };
+}
+
+/**
+ * Per-request memoized session lookup. Layout + page + API guards all hit
+ * this on every navigation — cache() collapses it to ONE DB round trip
+ * per request no matter how many callers there are.
+ */
+export const getSession = cache(loadSession);
+
+export async function getSessionUser(): Promise<SafeUser | null> {
+  const s = await getSession();
+  return s?.user ?? null;
+}
+
+export async function requireUser(): Promise<SafeUser> {
+  const u = await getSessionUser();
+  if (!u) redirect('/login');
+  return u;
 }
 
 export async function destroySession(): Promise<void> {
