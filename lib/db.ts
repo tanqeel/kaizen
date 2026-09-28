@@ -14,8 +14,11 @@ function createClient(): PrismaClient {
   if (url.startsWith('postgres')) {
     // Lazy-require so local SQLite dev never loads the Neon driver.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { PrismaNeon } = require('@prisma/adapter-neon') as typeof import('@prisma/adapter-neon');
-    return new PrismaClient({ adapter: new PrismaNeon({ connectionString: url }) });
+    const { PrismaNeonHTTP } = require('@prisma/adapter-neon') as typeof import('@prisma/adapter-neon');
+    // HTTP adapter (not WebSocket pool): each query is an independent fetch,
+    // so Promise.all batches actually run in parallel. The WS pool multiplexes
+    // over one socket and serializes concurrent queries (~4x slower batches).
+    return new PrismaClient({ adapter: new PrismaNeonHTTP(url, {}) });
   }
   return new PrismaClient();
 }
