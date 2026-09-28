@@ -26,6 +26,20 @@ export interface SlotLite {
   subject: string; subjectCode: string; teacherId: string; teacher: string;
   room: string | null; startTime: string; endTime: string;
 }
+export type PromoAction = 'promote' | 'graduate' | 'stay';
+export interface PromoStudent {
+  id: string; name: string; admissionNo: string;
+  fromGrade: string; fromSection: string | null;
+  toGrade: string | null; toSection: string | null;
+  action: PromoAction;
+}
+export interface PromoPlan {
+  currentSession: { id: string; name: string; term: string };
+  gradeMap: { from: { id: string; name: string }; to: { id: string; name: string } | null }[];
+  students: PromoStudent[];
+  counts: { total: number; promote: number; graduate: number; stay: number };
+}
+export interface PromoResult { promoted: number; graduated: number; stayed: number; newSessionId: string; }
 
 const WEEKDAYS = [1, 2, 3, 4, 5]; // Mon–Fri
 
@@ -277,6 +291,59 @@ export function AcademicsClient({
     flash(`Copied ${String(r.data.copied)} slots to ${String(r.data.to)} (replaced ${String(r.data.replaced)}).`, false);
   };
 
+  /* ---------------------------- promotion tab ---------------------------- */
+
+  const [promoName, setPromoName] = useState('');
+  const [promoPlan, setPromoPlan] = useState<PromoPlan | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoCommitting, setPromoCommitting] = useState(false);
+  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
+
+  const previewPlan = async () => {
+    flash(null, false);
+    setPromoPlan(null);
+    setPromoResult(null);
+    setPromoLoading(true);
+    const r = await api('/api/academics/promote', 'GET');
+    setPromoLoading(false);
+    if (!r.ok) { flash(String(r.data.error ?? 'Could not compute the promotion plan'), true); return; }
+    setPromoPlan(r.data as unknown as PromoPlan);
+  };
+
+  const commitPromotion = async () => {
+    const name = promoName.trim();
+    if (!promoPlan || !name) return;
+    const c = promoPlan.counts;
+    const ok = await confirm({
+      title: 'Confirm session promotion',
+      message:
+        'This WRITES REAL DATA and cannot be undone automatically:\n\n' +
+        `• ${c.promote} student${c.promote === 1 ? '' : 's'} promoted to the next grade\n` +
+        `• ${c.graduate} student${c.graduate === 1 ? '' : 's'} in the final grade graduated (deactivated)\n` +
+        `• ${c.stay} student${c.stay === 1 ? '' : 's'} left as-is\n\n` +
+        `A new session "${name}" will become the current session and "${promoPlan.currentSession.name}" will be deactivated.\n\n` +
+        'Press "Promote now" to proceed.',
+      confirmLabel: 'Promote now',
+    });
+    if (!ok) return;
+    flash(null, false);
+    setPromoCommitting(true);
+    const r = await api('/api/academics/promote', 'POST', { newSessionName: name, confirm: true });
+    setPromoCommitting(false);
+    if (!r.ok) { flash(String(r.data.error ?? 'Promotion failed'), true); return; }
+    const res = r.data as unknown as PromoResult;
+    setPromoResult(res);
+    setPromoPlan(null);
+    setPromoName('');
+    await refresh();
+    flash(`Promotion committed: ${res.promoted} promoted, ${res.graduated} graduated, ${res.stayed} stayed.`, false);
+  };
+
+  const actionBadge = (a: PromoAction) =>
+    a === 'promote' ? <Badge variant="present">Promote</Badge>
+    : a === 'graduate' ? <Badge variant="absent">Graduate</Badge>
+    : <Badge variant="neutral">Stay</Badge>;
+
   /* --------------------------------- render -------------------------------- */
 
   return (
@@ -299,6 +366,7 @@ export function AcademicsClient({
           { id: 'structure', label: 'Structure', icon: 'school' },
           { id: 'allocations', label: 'Allocations', icon: 'users' },
           { id: 'timetable', label: 'Timetable', icon: 'calendar-days' },
+          { id: 'promotion', label: 'Promotion', icon: 'refresh-cw' },
         ]}
         value={tab}
         onChange={setTab}
@@ -536,6 +604,117 @@ export function AcademicsClient({
             )}
             {!canManage && ttSectionId && (
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">You can view the timetable. Editing needs the academics.manage permission.</p>
+            )}
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* ── Promotion ── */}
+      <TabPanel id="promotion" active={tab === 'promotion'} className="mt-6">
+        <Card>
+          <CardHeader><CardTitle>Promote to new session</CardTitle></CardHeader>
+          <CardContent>
+            <div role="alert" className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <Icon name="alert-triangle" size={18} className="mt-0.5 shrink-0" />
+              <span>
+                Promotion moves every active student in the current session to the next grade (the section with the same name) and marks final-grade students as graduated.
+                <strong> Confirming writes real data</strong> — always preview the plan first and double-check it.
+              </span>
+            </div>
+
+            {!canManage ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Session promotion needs the academics.manage permission.</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-3">
+                  <Input
+                    label="New session name"
+                    value={promoName}
+                    onChange={(e) => setPromoName(e.target.value)}
+                    placeholder="e.g. 2026-27"
+                    className="min-w-[200px] flex-1"
+                    maxLength={20}
+                  />
+                  <Button onClick={previewPlan} disabled={promoLoading}>
+                    <Icon name="eye" size={16} /> {promoLoading ? 'Computing…' : 'Preview plan'}
+                  </Button>
+                </div>
+
+                {promoResult && (
+                  <div role="status" className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    <Icon name="check" size={18} className="mt-0.5 shrink-0" />
+                    <span>
+                      Promotion committed — the new session is now current.
+                      <strong> {promoResult.promoted}</strong> promoted,
+                      <strong> {promoResult.graduated}</strong> graduated,
+                      <strong> {promoResult.stayed}</strong> stayed.
+                    </span>
+                  </div>
+                )}
+
+                {promoPlan && (
+                  <div className="mt-6 space-y-6">
+                    <div>
+                      <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
+                        Current session: {promoPlan.currentSession.name}
+                        <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">→ new: {promoName.trim() || '—'}</span>
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="info">{promoPlan.counts.total} students</Badge>
+                        <Badge variant="present">{promoPlan.counts.promote} promote</Badge>
+                        <Badge variant="absent">{promoPlan.counts.graduate} graduate</Badge>
+                        <Badge variant="neutral">{promoPlan.counts.stay} stay</Badge>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Grade mapping</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {promoPlan.gradeMap.map((gm) => (
+                          <span key={gm.from.id} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                            {gm.from.name}
+                            <span aria-hidden className="text-slate-400">→</span>
+                            {gm.to ? gm.to.name : <span className="font-semibold text-rose-600 dark:text-rose-400">Graduate</span>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Students</h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <THead><TRow><TH>Student</TH><TH>From</TH><TH>To</TH><TH>Action</TH></TRow></THead>
+                          <TBody>
+                            {promoPlan.students.map((s) => (
+                              <TRow key={s.id}>
+                                <TD className="font-medium">
+                                  {s.name} <span className="font-normal text-xs text-slate-400">{s.admissionNo}</span>
+                                </TD>
+                                <TD>{s.fromGrade}{s.fromSection ? `-${s.fromSection}` : ''}</TD>
+                                <TD>{s.toGrade ? `${s.toGrade}${s.toSection ? `-${s.toSection}` : ''}` : '—'}</TD>
+                                <TD>{actionBadge(s.action)}</TD>
+                              </TRow>
+                            ))}
+                          </TBody>
+                        </Table>
+                      </div>
+                      {promoPlan.students.length === 0 && (
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No active students in the current session.</p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-500/20">
+                      <p className="flex-1 text-sm text-rose-800 dark:text-rose-200">
+                        <strong>Irreversible:</strong> committing moves students, deactivates graduates and switches the current session. Make sure the plan above is correct.
+                      </p>
+                      <Button variant="danger" onClick={commitPromotion} disabled={promoCommitting || !promoName.trim()}>
+                        <Icon name="refresh-cw" size={16} /> {promoCommitting ? 'Promoting…' : 'Confirm promotion'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

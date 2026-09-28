@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { requirePagePermission } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
@@ -52,6 +53,7 @@ export default async function StaffPage() {
                   <TH>Subjects</TH>
                   <TH>Monthly salary</TH>
                   <TH>Hired</TH>
+                  <TH>ID Card</TH>
                 </TRow>
               </THead>
               <TBody>
@@ -78,6 +80,14 @@ export default async function StaffPage() {
                     </TD>
                     <TD className="tnum font-semibold">{pkr(t.salaryMonthly)}</TD>
                     <TD className="tnum">{pktDate(t.hireDate)}</TD>
+                    <TD>
+                      <Link
+                        href={`/staff/${t.id}/id-card`}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        <Icon name="id-card" size={14} /> ID Card
+                      </Link>
+                    </TD>
                   </TRow>
                   ))}
               </TBody>
@@ -105,6 +115,7 @@ export default async function StaffPage() {
                   <TH>Phone</TH>
                   <TH>Monthly salary</TH>
                   <TH>Hired</TH>
+                  <TH>ID Card</TH>
                 </TRow>
               </THead>
               <TBody>
@@ -119,6 +130,14 @@ export default async function StaffPage() {
                     <TD className="tnum">{s.phone}</TD>
                     <TD className="tnum font-semibold">{pkr(s.salaryMonthly)}</TD>
                     <TD className="tnum">{pktDate(s.hireDate)}</TD>
+                    <TD>
+                      <Link
+                        href={`/staff/${s.id}/id-card`}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        <Icon name="id-card" size={14} /> ID Card
+                      </Link>
+                    </TD>
                   </TRow>
                   ))}
               </TBody>

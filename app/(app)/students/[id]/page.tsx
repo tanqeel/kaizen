@@ -118,12 +118,36 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         title={student.name}
         subtitle={`${student.admissionNo} · ${student.grade.name} – Section ${student.section.name} · ${student.shift.name} shift`}
         actions={
-          <Link
-            href="/students"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            <Icon name="arrow-left" size={16} /> Back to directory
-          </Link>
+          <>
+            {can(user.role, 'students.view') && (
+              <>
+                <Link
+                  href={`/students/${student.id}/id-card`}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                >
+                  <Icon name="id-card" size={16} /> ID Card
+                </Link>
+                <Link
+                  href={`/students/${student.id}/leaving-certificate`}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Icon name="award" size={16} /> Leaving Certificate
+                </Link>
+                <Link
+                  href={`/students/${student.id}/character-certificate`}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Icon name="award" size={16} /> Character Certificate
+                </Link>
+              </>
+            )}
+            <Link
+              href="/students"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <Icon name="arrow-left" size={16} /> Back to directory
+            </Link>
+          </>
         }
       />
 

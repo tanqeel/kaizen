@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge, Card, CardContent, EmptyState, Input, Select, Skeleton } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import type { StudentRow } from '@/app/api/students/route';
+import { StudentImportCsv } from './import-csv';
 
 interface GradeOption {
   id: string;
@@ -18,7 +19,7 @@ function gateBadge(status: StudentRow['gateToday']) {
   return <Badge variant="neutral">Not arrived</Badge>;
 }
 
-export function StudentDirectoryClient({ grades }: { grades: GradeOption[] }) {
+export function StudentDirectoryClient({ grades, canManage }: { grades: GradeOption[]; canManage: boolean }) {
   const [q, setQ] = useState('');
   const [gradeId, setGradeId] = useState('');
   const [sectionId, setSectionId] = useState('');
@@ -88,10 +89,15 @@ export function StudentDirectoryClient({ grades }: { grades: GradeOption[] }) {
             options={visibleSections.map((s) => ({ value: s.id, label: `Section ${s.name}` }))}
             placeholder="All sections"
           />
-          <div className="flex items-end">
+          <div className="flex items-end justify-between gap-3">
             <p className="tnum pb-3 text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
               {loading ? 'Loading…' : `${rows.length} student${rows.length === 1 ? '' : 's'}`}
             </p>
+            {canManage && (
+              <div className="pb-0.5">
+                <StudentImportCsv onDone={() => fetchRows({ q, gradeId, sectionId })} />
+              </div>
+            )}
           </div>
         </div>
 

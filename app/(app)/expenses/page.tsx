@@ -1,13 +1,14 @@
 import { requireUser } from '@/lib/auth';
-import { requirePagePermission } from '@/lib/rbac';
+import { requirePagePermission, can } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
 import { ConfirmProvider } from '@/components/ui';
 import { ExpensesClient } from './_components/expenses-client';
 
-/** /expenses — expenses, budgets, P&L. finance.manage required. */
+/** /expenses — finance tabs need finance.manage; Requests tab needs expenses.request. */
 export default async function ExpensesPage() {
   const user = await requireUser();
-  requirePagePermission(user.role, 'finance.manage');
+  requirePagePermission(user.role, 'expenses.request');
+  const canFinance = can(user.role, 'finance.manage');
 
   const school = await prisma.school.findFirst({ select: { id: true } });
   const [heads, sources] = school
@@ -27,7 +28,13 @@ export default async function ExpensesPage() {
 
   return (
     <ConfirmProvider>
-      <ExpensesClient heads={heads} sources={sources} />
+      <ExpensesClient
+        heads={heads}
+        sources={sources}
+        canApprove={can(user.role, 'expenses.approve')}
+        canFinance={canFinance}
+        userId={user.id}
+      />
     </ConfirmProvider>
   );
 }

@@ -37,7 +37,11 @@ export type Permission =
   | 'events.view'
   | 'events.manage'
   | 'liveclasses.view'
-  | 'liveclasses.manage';
+  | 'liveclasses.manage'
+  | 'payroll.view'
+  | 'payroll.manage'
+  | 'expenses.request'
+  | 'expenses.approve';
 
 const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
 
@@ -78,6 +82,10 @@ const MATRIX: Record<Permission, Role[]> = {
   'events.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
   'liveclasses.view': ALL,
   'liveclasses.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'payroll.view': ALL,
+  'payroll.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'expenses.request': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF', 'TEACHER'],
+  'expenses.approve': ['SUPER_ADMIN', 'PRINCIPAL'],
 };
 
 export function can(role: Role, perm: Permission): boolean {
@@ -121,9 +129,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/staff/attendance', label: 'Staff Attendance', perm: 'staff.attendance.view' },
   { href: '/events', label: 'Events', perm: 'events.view' },
   { href: '/live-classes', label: 'Live Classes', perm: 'liveclasses.view' },
+  { href: '/payroll', label: 'Payroll', perm: 'payroll.view' },
+  { href: '/expenses', label: 'Expenses', perm: 'expenses.request' },
   { href: '/exams', label: 'Exams & Results', perm: 'exams.view' },
   { href: '/fees', label: 'Fees', perm: 'finance.view' },
-  { href: '/expenses', label: 'Expenses', perm: 'finance.manage' },
   { href: '/comms', label: 'Notices & SMS', perm: 'comms.manage' },
   { href: '/biometric', label: 'Biometric', perm: 'biometric.use' },
   { href: '/ai', label: 'Kaizen AI', perm: 'ai.use' },

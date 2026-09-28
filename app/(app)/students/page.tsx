@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { requirePagePermission } from '@/lib/rbac';
+import { requirePagePermission, can } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui';
 import { StudentDirectoryClient } from './directory-client';
@@ -25,6 +25,7 @@ export default async function StudentsPage() {
           name: g.name,
           sections: g.sections,
         }))}
+        canManage={can(user.role, 'students.manage')}
       />
     </div>
   );

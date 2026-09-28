@@ -119,6 +119,8 @@ model School {
   budgets               Budget[]
   expenseHeads          ExpenseHead[]
   paymentSources        PaymentSource[]
+  payslips              Payslip[]
+  expenseRequests       ExpenseRequest[]
   diaryEntries          DiaryEntry[]
   studyMaterials        StudyMaterial[]
   admissionApplications AdmissionApplication[]
@@ -184,6 +186,9 @@ model User {
   markedStaffAttendance StaffAttendance[]      @relation("StaffAttendanceMarker")
   approvedDiscounts     Discount[]             @relation("DiscountApprover")
   createdEvents         SchoolEvent[]          @relation("EventCreator")
+  generatedPayslips     Payslip[]              @relation("PayslipGenerator")
+  requestedExpenses     ExpenseRequest[]       @relation("ExpenseRequester")
+  decidedExpenses       ExpenseRequest[]       @relation("ExpenseDecider")
 }
 
 model SessionToken {
@@ -215,6 +220,7 @@ model Teacher {
   leaveRequests   LeaveRequest[]
   staffAttendance StaffAttendance[]
   liveClasses     LiveClass[]
+  payslips        Payslip[]
 }
 
 model StaffMember {
@@ -231,6 +237,7 @@ model StaffMember {
 
   leaveRequests   LeaveRequest[]
   staffAttendance StaffAttendance[]
+  payslips        Payslip[]
 }
 
 model Parent {
@@ -534,8 +541,9 @@ model ExpenseHead {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name     String
 
-  expenses Expense[]
-  budgets  Budget[]
+  expenses        Expense[]
+  expenseRequests ExpenseRequest[]
+  budgets         Budget[]
 }
 
 model PaymentSource {
@@ -544,22 +552,24 @@ model PaymentSource {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name     String
 
-  expenses Expense[]
+  expenses        Expense[]
+  expenseRequests ExpenseRequest[]
 }
 
 model Expense {
-  id          String        @id @default(cuid())
-  schoolId    String
-  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  date        DateTime
-  headId      String
-  head        ExpenseHead   @relation(fields: [headId], references: [id])
-  sourceId    String
-  source      PaymentSource @relation(fields: [sourceId], references: [id])
-  amount      Int
-  description String?
-  addedById   String?
-  addedBy     User?         @relation("ExpenseAuthor", fields: [addedById], references: [id], onDelete: SetNull)
+  id             String          @id @default(cuid())
+  schoolId       String
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  date           DateTime
+  headId         String
+  head           ExpenseHead     @relation(fields: [headId], references: [id])
+  sourceId       String
+  source         PaymentSource   @relation(fields: [sourceId], references: [id])
+  amount         Int
+  description    String?
+  addedById      String?
+  addedBy        User?           @relation("ExpenseAuthor", fields: [addedById], references: [id], onDelete: SetNull)
+  expenseRequest ExpenseRequest?
 }
 
 model Budget {
@@ -874,4 +884,66 @@ model LiveClass {
 
   @@index([schoolId, startsAt])
   @@index([sectionId])
+}
+
+// ── Phase 4: payroll, expense approvals ────────────────────────────────────
+enum PayslipStatus {
+  DRAFT
+  GENERATED
+  PAID
+}
+
+model Payslip {
+  id            String        @id @default(cuid())
+  schoolId      String
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       Teacher?      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  staffMemberId String?
+  staffMember   StaffMember?  @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  month         Int
+  year          Int
+  baseSalary    Int
+  allowances    Int           @default(0)
+  deductions    Int           @default(0)
+  netPay        Int
+  status        PayslipStatus @default(GENERATED)
+  generatedById String
+  generatedBy   User          @relation("PayslipGenerator", fields: [generatedById], references: [id], onDelete: Restrict)
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([schoolId, year, month])
+  @@index([teacherId])
+  @@index([staffMemberId])
+}
+
+enum ExpenseRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ExpenseRequest {
+  id            String               @id @default(cuid())
+  schoolId      String
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User                 @relation("ExpenseRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  title         String
+  description   String?
+  amount        Int
+  headId        String
+  head          ExpenseHead          @relation(fields: [headId], references: [id], onDelete: Restrict)
+  status        ExpenseRequestStatus @default(PENDING)
+  decidedById   String?
+  decidedBy     User?                @relation("ExpenseDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+  sourceId      String?
+  source        PaymentSource?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  expenseId     String?              @unique
+  expense       Expense?             @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  createdAt     DateTime             @default(now())
+
+  @@index([schoolId, status])
 }

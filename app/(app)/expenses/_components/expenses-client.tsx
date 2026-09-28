@@ -6,9 +6,10 @@ import {
   FormGrid, Input, PageHeader, Select, Skeleton, Stat, Table, TBody, TD, TH, THead, TRow,
   Tabs, useConfirm,
 } from '@/components/ui';
-import { Icon } from '@/components/icons';
-import { pkr, pktDate, todayPKT } from '@/lib/format';
+import { Icon, type IconName } from '@/components/icons';
+import { pkr, pktDate, pktDateTime, todayPKT } from '@/lib/format';
 import type { ExpenseRow } from '@/app/api/expenses/route';
+import type { ExpenseRequestRow } from '@/app/api/expense-requests/route';
 import type { BudgetRow } from '@/app/api/finance/budgets/route';
 import type { PnlResult } from '@/app/api/finance/pnl/route';
 
@@ -18,25 +19,35 @@ function currentMonth(): string {
   return todayPKT().slice(0, 7);
 }
 
-export function ExpensesClient({ heads, sources }: { heads: Option[]; sources: Option[] }) {
-  const [tab, setTab] = useState('expenses');
+export function ExpensesClient({ heads, sources, canApprove, canFinance, userId }: {
+  heads: Option[]; sources: Option[]; canApprove: boolean; canFinance: boolean; userId: string;
+}) {
+  // Non-finance staff (e.g. teachers) only see the Requests tab.
+  const [tab, setTab] = useState(canFinance ? 'expenses' : 'requests');
+  const financeTabs: { id: string; label: string; icon: IconName }[] = [
+    { id: 'expenses', label: 'Expenses', icon: 'receipt-text' },
+    { id: 'budgets', label: 'Budgets', icon: 'wallet' },
+    { id: 'pnl', label: 'P&L', icon: 'dashboard' },
+  ];
+  const tabs = [
+    ...(canFinance ? [financeTabs[0]] : []),
+    { id: 'requests', label: 'Requests', icon: 'clipboard-check' as IconName },
+    ...(canFinance ? financeTabs.slice(1) : []),
+  ];
 
   return (
     <div>
-      <PageHeader title="Expenses & Budgets" subtitle="School spending, planned budgets, and monthly profit & loss." />
+      <PageHeader title="Expenses & Budgets" subtitle="School spending, expense requests, planned budgets, and monthly profit & loss." />
       <Tabs
-        tabs={[
-          { id: 'expenses', label: 'Expenses', icon: 'receipt-text' },
-          { id: 'budgets', label: 'Budgets', icon: 'wallet' },
-          { id: 'pnl', label: 'P&L', icon: 'dashboard' },
-        ]}
+        tabs={tabs}
         value={tab}
         onChange={setTab}
         className="mb-6"
       />
-      {tab === 'expenses' && <ExpensesTab heads={heads} sources={sources} />}
-      {tab === 'budgets' && <BudgetsTab heads={heads} />}
-      {tab === 'pnl' && <PnlTab />}
+      {tab === 'expenses' && canFinance && <ExpensesTab heads={heads} sources={sources} />}
+      {tab === 'requests' && <RequestsTab heads={heads} sources={sources} canApprove={canApprove} userId={userId} />}
+      {tab === 'budgets' && canFinance && <BudgetsTab heads={heads} />}
+      {tab === 'pnl' && canFinance && <PnlTab />}
     </div>
   );
 }
@@ -229,6 +240,337 @@ function ExpenseForm({
         />
         {error && <p role="alert" className="text-sm text-rose-600 sm:col-span-2 dark:text-rose-400">{error}</p>}
       </FormGrid>
+    </Dialog>
+  );
+}
+
+/* ---------------------------- Expense requests ---------------------------- */
+
+const REQUEST_STATUS_BADGE: Record<ExpenseRequestRow['status'], 'pending' | 'present' | 'overdue'> = {
+  PENDING: 'pending',
+  APPROVED: 'present',
+  REJECTED: 'overdue',
+};
+
+function RequestsTab({ heads, sources, canApprove, userId }: {
+  heads: Option[]; sources: Option[]; canApprove: boolean; userId: string;
+}) {
+  const confirm = useConfirm();
+  const [rows, setRows] = useState<ExpenseRequestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [approveTarget, setApproveTarget] = useState<ExpenseRequestRow | null>(null);
+
+  // New-request form state
+  const [title, setTitle] = useState('');
+  const [headId, setHeadId] = useState(heads[0]?.id ?? '');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/expense-requests', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load');
+      setRows(data.requests);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load requests');
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const pending = rows.filter((r) => r.status === 'PENDING');
+  const history = rows.filter((r) => r.status !== 'PENDING');
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/expense-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          amount: parseInt(amount, 10),
+          headId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to submit');
+      setTitle('');
+      setAmount('');
+      setDescription('');
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to submit');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reject = async (r: ExpenseRequestRow) => {
+    if (!(await confirm({
+      title: 'Reject request?',
+      message: `Reject "${r.title}" (${pkr(r.amount)}) requested by ${r.requestedBy}? No expense entry will be created.`,
+      confirmLabel: 'Reject',
+    }))) return;
+    const res = await fetch(`/api/expense-requests/${r.id}/reject`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to reject');
+      return;
+    }
+    load();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* New request */}
+      <Card>
+        <CardHeader><CardTitle>New expense request</CardTitle></CardHeader>
+        <CardContent>
+          {heads.length === 0 ? (
+            <EmptyState icon="receipt-text" title="No expense heads" guidance="Ask an admin to add expense heads before submitting a request." />
+          ) : (
+            <FormGrid>
+              <Input
+                label="Title"
+                placeholder="e.g. Printer cartridges for office"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                className="sm:col-span-2"
+              />
+              <Select
+                label="Expense head"
+                value={headId}
+                onChange={(e) => setHeadId(e.target.value)}
+                options={heads.map((h) => ({ value: h.id, label: h.name }))}
+                required
+              />
+              <Input
+                label="Amount (PKR)"
+                type="number"
+                min={1}
+                placeholder="e.g. 8500"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+              <Input
+                label="Description (optional)"
+                placeholder="Why is this needed?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="sm:col-span-2"
+              />
+              <div className="sm:col-span-2">
+                <Button
+                  onClick={submit}
+                  loading={submitting}
+                  disabled={!title.trim() || !amount || parseInt(amount, 10) <= 0 || !headId}
+                >
+                  <Icon name="check" size={18} /> Submit for approval
+                </Button>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Your request goes to a principal / admin for approval. Approved requests are recorded as expenses automatically.
+                </p>
+              </div>
+            </FormGrid>
+          )}
+        </CardContent>
+      </Card>
+
+      {error && <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+
+      {loading ? (
+        <Skeleton className="h-64" />
+      ) : (
+        <>
+          {/* Pending */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Pending approval ({pending.length})
+            </h3>
+            {pending.length === 0 ? (
+              <EmptyState icon="clipboard-check" title="Nothing waiting" guidance="No expense requests are pending right now." />
+            ) : (
+              <Table>
+                <THead>
+                  <TRow>
+                    <TH>Request</TH>
+                    <TH>Head</TH>
+                    <TH className="text-right">Amount</TH>
+                    <TH>Requested by</TH>
+                    <TH>Requested</TH>
+                    {canApprove && <TH><span className="sr-only">Actions</span></TH>}
+                  </TRow>
+                </THead>
+                <TBody>
+                  {pending.map((r) => {
+                    const own = r.requestedById === userId;
+                    return (
+                      <TRow key={r.id}>
+                        <TD>
+                          <div className="font-medium text-slate-900 dark:text-white">{r.title}</div>
+                          {r.description && <div className="max-w-56 truncate text-xs text-slate-500">{r.description}</div>}
+                        </TD>
+                        <TD><Badge variant="info">{r.head.name}</Badge></TD>
+                        <TD className="tnum text-right font-semibold">{pkr(r.amount)}</TD>
+                        <TD className="whitespace-nowrap">{r.requestedBy}</TD>
+                        <TD className="tnum whitespace-nowrap">{pktDateTime(r.createdAt)}</TD>
+                        {canApprove && (
+                          <TD>
+                            {own ? (
+                              <span className="text-xs text-slate-500">Waiting for another approver</span>
+                            ) : (
+                              <div className="flex min-h-[44px] items-center gap-2">
+                                <Button size="sm" onClick={() => setApproveTarget(r)}>
+                                  <Icon name="check" size={16} /> Approve
+                                </Button>
+                                <Button size="sm" variant="danger" onClick={() => reject(r)}>
+                                  <Icon name="x" size={16} /> Reject
+                                </Button>
+                              </div>
+                            )}
+                          </TD>
+                        )}
+                      </TRow>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            )}
+          </div>
+
+          {/* History */}
+          {history.length > 0 && (
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Request history ({history.length})
+              </h3>
+              <Table>
+                <THead>
+                  <TRow>
+                    <TH>Request</TH>
+                    <TH className="text-right">Amount</TH>
+                    <TH>Requested by</TH>
+                    <TH>Status</TH>
+                    <TH>Decided</TH>
+                  </TRow>
+                </THead>
+                <TBody>
+                  {history.map((r) => (
+                    <TRow key={r.id}>
+                      <TD>
+                        <div className="font-medium text-slate-900 dark:text-white">{r.title}</div>
+                        {r.description && <div className="max-w-56 truncate text-xs text-slate-500">{r.description}</div>}
+                      </TD>
+                      <TD className="tnum text-right font-semibold">{pkr(r.amount)}</TD>
+                      <TD className="whitespace-nowrap">{r.requestedBy}</TD>
+                      <TD><Badge variant={REQUEST_STATUS_BADGE[r.status]}>{r.status}</Badge></TD>
+                      <TD className="whitespace-nowrap text-xs text-slate-500">
+                        {r.decidedBy && r.decidedAt ? `${r.decidedBy} · ${pktDate(r.decidedAt)}` : '—'}
+                      </TD>
+                    </TRow>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+        </>
+      )}
+
+      <ApproveRequestDialog
+        key={approveTarget?.id ?? 'closed'}
+        request={approveTarget}
+        sources={sources}
+        onClose={() => setApproveTarget(null)}
+        onApproved={() => { setApproveTarget(null); load(); }}
+        onError={setError}
+      />
+    </div>
+  );
+}
+
+function ApproveRequestDialog({ request, sources, onClose, onApproved, onError }: {
+  request: ExpenseRequestRow | null;
+  sources: Option[];
+  onClose: () => void;
+  onApproved: () => void;
+  onError: (msg: string | null) => void;
+}) {
+  const [sourceId, setSourceId] = useState(sources[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  // Remounted per request (parent passes a key), so the initial sourceId is fresh each time.
+
+  const approve = async () => {
+    if (!request || !sourceId) return;
+    setBusy(true);
+    onError(null);
+    try {
+      const res = await fetch(`/api/expense-requests/${request.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to approve');
+      onApproved();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Failed to approve');
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={!!request}
+      onClose={onClose}
+      title="Approve expense request"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={approve} loading={busy} disabled={!sourceId}>
+            <Icon name="check" size={18} /> Approve & record expense
+          </Button>
+        </>
+      }
+    >
+      {request && (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
+            <div className="font-medium text-slate-900 dark:text-white">{request.title}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-slate-500">
+              <Badge variant="info">{request.head.name}</Badge>
+              <span className="tnum font-semibold text-slate-900 dark:text-white">{pkr(request.amount)}</span>
+              <span>·</span>
+              <span>{request.requestedBy}</span>
+            </div>
+          </div>
+          {sources.length === 0 ? (
+            <EmptyState icon="wallet" title="No payment sources" guidance="Ask an admin to add payment sources before approving expenses." />
+          ) : (
+            <Select
+              label="Pay from"
+              value={sourceId}
+              onChange={(e) => setSourceId(e.target.value)}
+              options={sources.map((s) => ({ value: s.id, label: s.name }))}
+              required
+            />
+          )}
+        </div>
+      )}
     </Dialog>
   );
 }
