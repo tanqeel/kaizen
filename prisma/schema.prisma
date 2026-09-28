@@ -1,12 +1,12 @@
 // Kaizen School Management System — data model
-// SQLite via Prisma. Switch to Postgres later by changing provider + DATABASE_URL.
+// Postgres via Prisma (Neon on Vercel for production; any Postgres URL works locally).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
