@@ -141,8 +141,10 @@ Each insight has: category, title, explanation, evidence, period, confidence, su
 ## Deployment Status
 
 - **Local:** All phases 1-5 built, TypeScript passes, production build passes.
-- **GitHub:** NOT pushed (awaiting your review per show-first rule).
-- **Production:** NOT deployed (auto-deploy is enabled — pushing = deploying).
-- **Database:** NO migration applied (production schema unchanged).
-
-**Next step:** Review the implementation, then approve push + migration when ready.
+- **GitHub:** Pushed (261 files).
+- **Vercel:** Auto-deploy triggered. Build command reverted to safe `prisma generate && next build`.
+- **Database migration:** Production was built with `db push` (no migration history), so
+  `prisma migrate deploy` fails with `db_schema_not_empty`. Solution: super-admin-only
+  `POST /api/admin/migrate` endpoint applies the schema changes idempotently via
+  `$executeRawUnsafe`. Run once after deploy, then remove the route.
+- **Status:** Awaiting migration endpoint execution on production.
