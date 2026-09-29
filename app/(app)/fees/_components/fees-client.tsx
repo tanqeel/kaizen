@@ -11,6 +11,7 @@ import { pkr, pktDate, todayPKT } from '@/lib/format';
 import { MONTHS, monthLabel, statusBadgeVariant, type DisplayStatus } from '@/lib/fees';
 import FeePolicyCard from './fee-policy-card';
 import type { VoucherRow, VoucherSummary } from '@/app/api/fees/vouchers/route';
+import { safeJson } from '@/lib/api-client';
 
 interface GradeOption {
   id: string;
@@ -65,7 +66,7 @@ export function FeesClient({ canManage, grades }: { canManage: boolean; grades: 
     setError(null);
     try {
       const res = await fetch(`/api/fees/vouchers?${query}`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load vouchers');
       setRows(data.vouchers);
       setSummary(data.summary);
@@ -277,7 +278,7 @@ function GenerateDialog({
           month, year,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');
       setResult({ created: data.created, skipped: data.skipped });
       onDone();

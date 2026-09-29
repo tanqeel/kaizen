@@ -6,6 +6,7 @@ import { Button, Dialog, FormGrid, Input, Select } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { pkr } from '@/lib/format';
 import { PAYMENT_METHODS } from '@/lib/fees';
+import { safeJson } from '@/lib/api-client';
 
 /** "Record payment" dialog for a voucher. Validates client-side; the API re-validates. */
 export function RecordPayment({ voucherId, balance }: { voucherId: string; balance: number }) {
@@ -30,7 +31,7 @@ export function RecordPayment({ voucherId, balance }: { voucherId: string; balan
           ...(reference.trim() ? { reference: reference.trim() } : {}),
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Payment failed');
       setOpen(false);
       router.refresh();

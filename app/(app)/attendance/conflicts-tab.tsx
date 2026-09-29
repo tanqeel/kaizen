@@ -6,6 +6,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, EmptyS
 import { Icon } from '@/components/icons';
 import { todayPKT } from '@/lib/format';
 import type { ConflictRow } from '@/app/api/attendance/conflicts/route';
+import { safeJson } from '@/lib/api-client';
 
 const STATUS_FILTERS = [
   { value: 'OPEN', label: 'Open' },
@@ -31,7 +32,7 @@ export function ConflictsTab() {
     try {
       const res = await fetch(`/api/attendance/conflicts?status=${s}`);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const data = await res.json();
+      const data = await safeJson(res);
       setRows(data.conflicts ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load conflicts');
@@ -54,7 +55,7 @@ export function ConflictsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: todayPKT() }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? `Server returned ${res.status}`);
       setRerunMsg(`Detection re-run for ${data.date}: ${data.created} new conflict${data.created === 1 ? '' : 's'} found.`);
       if (status === 'OPEN') load('OPEN');
@@ -81,7 +82,7 @@ export function ConflictsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next, note: resolutionNote }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? `Server returned ${res.status}`);
       setRows((prev) => (status === 'OPEN' ? prev.filter((r) => r.id !== row.id) : prev.map((r) => (r.id === row.id ? { ...r, status: next } : r))));
       setResolving(null);

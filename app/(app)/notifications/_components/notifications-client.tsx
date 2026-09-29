@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, CardContent, EmptyState, PageHeader, Tabs } from '@/components/ui';
 import { Icon, type IconName } from '@/components/icons';
 import { pktDateTime } from '@/lib/format';
+import { safeJson } from '@/lib/api-client';
 
 interface NotificationItem {
   id: string;
@@ -35,7 +36,7 @@ export function NotificationsClient() {
     try {
       const res = await fetch('/api/notifications', { cache: 'no-store' });
       if (!res.ok) throw new Error('Could not load notifications.');
-      const data = await res.json();
+      const data = await safeJson(res);
       setItems(Array.isArray(data.notifications) ? data.notifications : []);
       setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
     } catch {

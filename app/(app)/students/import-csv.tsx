@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Badge, Button, Dialog } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 interface Preview {
   name: string;
@@ -98,7 +99,7 @@ export function StudentImportCsv({ onDone }: { onDone: () => void }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ csv, dryRun }),
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error ?? `Server returned ${res.status}`);
     return data;
   };

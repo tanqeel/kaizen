@@ -8,6 +8,7 @@ import {
 import { Icon } from '@/components/icons';
 import { pktDate } from '@/lib/format';
 import { gradeBand } from '@/lib/exams';
+import { safeJson } from '@/lib/api-client';
 
 /* ---------------------------------- types --------------------------------- */
 
@@ -52,7 +53,7 @@ async function api(path: string, method: string, body?: unknown) {
   });
   let data: Record<string, unknown> = {};
   try {
-    data = (await res.json()) as Record<string, unknown>;
+    data = (await safeJson(res)) as Record<string, unknown>;
   } catch { /* non-JSON */ }
   return { ok: res.ok, status: res.status, data };
 }

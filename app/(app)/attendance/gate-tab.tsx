@@ -6,6 +6,7 @@ import { Icon } from '@/components/icons';
 import { downloadCsv } from '@/lib/fees';
 import { todayPKT } from '@/lib/format';
 import type { GateRow } from '@/app/api/attendance/gate/route';
+import { safeJson } from '@/lib/api-client';
 
 const METHODS = [
   { value: 'FINGERPRINT', label: 'Fingerprint' },
@@ -51,7 +52,7 @@ export function GateTab() {
     try {
       const res = await fetch(`/api/attendance/gate?date=${d}`);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const data = await res.json();
+      const data = await safeJson(res);
       setRows(data.checkIns ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load check-ins');
@@ -76,7 +77,7 @@ export function GateTab() {
       try {
         const res = await fetch(`/api/lookup/students?q=${encodeURIComponent(q.trim())}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await safeJson(res);
           setResults(data.students ?? []);
         }
       } catch {
@@ -102,7 +103,7 @@ export function GateTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId: picked.id, method }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? `Server returned ${res.status}`);
       setFormMsg({
         kind: 'ok',
@@ -127,7 +128,7 @@ export function GateTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? `Server returned ${res.status}`);
       setRows((prev) =>
         prev.map((r) =>

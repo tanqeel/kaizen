@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { pktDate } from '@/lib/format';
+import { safeJson } from '@/lib/api-client';
 
 interface Application {
   id: string;
@@ -72,7 +73,7 @@ export function AdmissionsClient({ canDecide }: { canDecide: boolean }) {
     try {
       const res = await fetch(`/api/admissions?status=${status}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load applications.');
-      const data = await res.json();
+      const data = await safeJson(res);
       setApps(data.applications ?? []);
     } catch {
       setError('Could not load applications. Please try again.');
@@ -106,7 +107,7 @@ export function AdmissionsClient({ canDecide }: { canDecide: boolean }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Decision failed.');
       if (data.admissionNo) {
         setNotice(`Enrolled as admission no. ${data.admissionNo}`);

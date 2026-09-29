@@ -9,6 +9,7 @@ import {
 import { Icon } from '@/components/icons';
 import { pkr, pktDate, pktDateTime, todayPKT } from '@/lib/format';
 import { TEMPLATE_VARIABLES, renderTemplate } from '@/lib/comms-shared';
+import { safeJson } from '@/lib/api-client';
 
 interface GradeOption { id: string; name: string; level: number }
 
@@ -84,7 +85,7 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
     setLoading(true);
     try {
       const res = await fetch('/api/comms/announcements', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load');
       setItems(data.announcements);
     } catch {
@@ -112,7 +113,7 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
       const p = new URLSearchParams({ audience });
       if (audience === 'GRADES') p.set('gradeId', gradeId);
       const res = await fetch(`/api/comms/audience?${p}`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok) setAudienceInfo({ count: data.count, label: data.label });
     } catch {
       /* count is a nicety; sending still works */
@@ -130,7 +131,7 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
           ...(audience === 'GRADES' ? { gradeId } : {}),
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to send');
       setPreviewOpen(false);
       setTitle('');
@@ -181,7 +182,7 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), body: body.trim(), priority }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to save');
       cancelEdit();
       setNotice('Announcement updated.');
@@ -327,7 +328,7 @@ function LogTab() {
       if (channel) p.set('channel', channel);
       if (status) p.set('status', status);
       const res = await fetch(`/api/comms/notifications?${p}`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed');
       setRows(data.notifications);
     } catch {
@@ -408,7 +409,7 @@ function TemplatesTab() {
     setLoading(true);
     try {
       const res = await fetch('/api/comms/templates', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed');
       setTemplates(data.templates);
     } catch {
@@ -505,7 +506,7 @@ function TemplateEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), body: body.trim() }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to save');
       onClose();
       onSaved();
@@ -562,7 +563,7 @@ function TemplatePreview({ template, onClose }: { template: Template; onClose: (
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/lookup/students?q=${encodeURIComponent(q.trim())}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await safeJson(res);
         setResults(res.ok ? data.students : []);
       } catch {
         setResults([]);
@@ -578,7 +579,7 @@ function TemplatePreview({ template, onClose }: { template: Template; onClose: (
     setOutstanding(null);
     try {
       const res = await fetch(`/api/lookup/students/${s.id}/balance`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok) setOutstanding(data.outstanding);
     } catch {
       /* amount falls back below */

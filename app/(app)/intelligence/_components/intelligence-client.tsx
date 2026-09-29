@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Skeleton } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 interface Insight {
   id: string;
@@ -35,7 +36,7 @@ export function IntelligenceClient() {
     setLoading(true);
     try {
       const res = await fetch('/api/intelligence');
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load insights.');
       setInsights(data.insights ?? []);
     } catch (e) {
@@ -54,7 +55,7 @@ export function IntelligenceClient() {
     setError('');
     try {
       const res = await fetch('/api/intelligence', { method: 'POST' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed.');
       await load();
     } catch (e) {

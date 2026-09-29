@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Dialog } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 /** Discharge (leave school) or reactivate a student. Records are kept; the student leaves the active directory. */
 export function DischargeButton({ studentId, studentName, isActive }: { studentId: string; studentName: string; isActive: boolean }) {
@@ -21,7 +22,7 @@ export function DischargeButton({ studentId, studentName, isActive }: { studentI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !isActive }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
       setOpen(false);
       if (!isActive) {

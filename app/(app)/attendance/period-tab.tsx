@@ -7,6 +7,7 @@ import { downloadCsv } from '@/lib/fees';
 import { todayPKT } from '@/lib/format';
 import type { AttendanceSection } from './tabs';
 import type { AttendanceStatus } from '@prisma/client';
+import { safeJson } from '@/lib/api-client';
 
 interface SlotInfo {
   periodNo: number;
@@ -68,10 +69,10 @@ export function PeriodTab({ sections }: { sections: AttendanceSection[] }) {
     try {
       const res = await fetch(`/api/attendance/period?sectionId=${sid}&date=${d}`);
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = await safeJson(res).catch(() => ({}));
         throw new Error(body.error ?? `Server returned ${res.status}`);
       }
-      const payload = (await res.json()) as RegisterData;
+      const payload = (await safeJson(res)) as RegisterData;
       setData(payload);
       // Prefill: default to the first submitted period so teachers continue where they left off.
       if (payload.slots.length > 0) setPeriodNo(payload.slots[0].periodNo);
@@ -162,7 +163,7 @@ export function PeriodTab({ sections }: { sections: AttendanceSection[] }) {
           entries: data.students.map((s) => ({ studentId: s.id, status: entries[s.id] ?? 'PENDING' })),
         }),
       });
-      const body = await res.json();
+      const body = await safeJson(res);
       if (!res.ok) throw new Error(body.error ?? `Server returned ${res.status}`);
       setResult({
         saved: body.saved,

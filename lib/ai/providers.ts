@@ -112,6 +112,10 @@ export function providerStatus(): ProviderInfo[] {
  * Generate text with the first working provider in priority order.
  * Throws 'no-generative-provider' when nothing is configured, or
  * 'all-providers-failed' when every configured provider errored.
+ *
+ * Each provider gets a short budget (10s): on serverless (60s function
+ * limit) a 30s-per-provider chain could hit the platform timeout before
+ * the rule-based fallback ever runs.
  */
 export async function generateText(opts: GenerateOptions): Promise<{ text: string; provider: AiProviderId }> {
   let attempted = 0;
@@ -119,7 +123,7 @@ export async function generateText(opts: GenerateOptions): Promise<{ text: strin
     if (!isConfigured(id)) continue;
     attempted++;
     try {
-      const text = await withTimeout(30000, (signal) => {
+      const text = await withTimeout(10000, (signal) => {
         if (id === 'ollama') return viaOllama(opts, signal);
         if (id === 'pollinations') return viaPollinations(opts, signal);
         if (id === 'huggingface') return viaHuggingFace(opts, signal);

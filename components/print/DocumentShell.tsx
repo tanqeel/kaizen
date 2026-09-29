@@ -78,9 +78,9 @@ export function DocumentShell({
   formNo,
   session,
   schoolName = 'Kaizen Model School',
-  schoolAddress = 'Rohillanwali, District Muzaffargarh, Punjab',
-  schoolPhone = '+92 300 1234567',
-  schoolEmail = 'info@kaizen.edu.pk',
+  schoolAddress,
+  schoolPhone,
+  schoolEmail,
   children,
   footerLeft = 'Discipline',
   footerCenter = 'Knowledge',
@@ -98,10 +98,9 @@ export function DocumentShell({
             <p className="kaizen-doc-tagline">Empowering Education | Building Brighter Futures</p>
           </div>
           <div className="kaizen-doc-school">
-            <p>{schoolAddress}</p>
-            <p>{schoolPhone}</p>
-            <p>{schoolEmail}</p>
-            <p>www.kaizen.edu.pk</p>
+            {schoolAddress && <p>{schoolAddress}</p>}
+            {schoolPhone && <p>{schoolPhone}</p>}
+            {schoolEmail && <p>{schoolEmail}</p>}
           </div>
         </div>
         <div className="kaizen-doc-gold-bar" />

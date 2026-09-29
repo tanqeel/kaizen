@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/components/ui';
+import { safeJson } from '@/lib/api-client';
 
 export function SecurityClient({ mustReset }: { mustReset: boolean }) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function SecurityClient({ mustReset }: { mustReset: boolean }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
       setDone(true);
       if (mustReset) {

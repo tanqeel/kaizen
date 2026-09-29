@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeJson } from '@/lib/api-client';
 
 /**
  * /activate/[token] — one-time account activation.
@@ -51,7 +52,7 @@ export default function ActivatePage({ params }: { params: Promise<{ token: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       });
-      const d = await res.json();
+      const d = await safeJson(res);
       if (d.ok) {
         setState('done');
       } else {

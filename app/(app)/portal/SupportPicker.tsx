@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Input, EmptyState } from '@/components/ui';
+import { safeJson } from '@/lib/api-client';
 
 interface SearchHit {
   id: string;
@@ -27,7 +28,7 @@ export function SupportPicker() {
     const t = setTimeout(async () => {
       const res = await fetch(`/api/portal/students?q=${encodeURIComponent(q.trim())}`);
       if (res.ok) {
-        const data = (await res.json()) as { students: SearchHit[] };
+        const data = (await safeJson(res)) as { students: SearchHit[] };
         setHits(data.students);
       }
       setSearched(true);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Dialog, Input, Select } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 export function AddStaffDialog() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export function AddStaffDialog() {
           hireDate: hireDate || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to add.');
       setOpen(false);
       setName(''); setEmail(''); setPassword(''); setPhone(''); setCnic('');

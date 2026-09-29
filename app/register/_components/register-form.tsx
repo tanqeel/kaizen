@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, Button, Input, Select, Textarea } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 interface RegisterFormProps {
   schoolName: string;
@@ -70,7 +71,7 @@ export function RegisterForm({ schoolName, grades }: RegisterFormProps) {
           website,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await safeJson(res).catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? 'Submission failed. Please try again.');
       setDone(true);
     } catch (err) {

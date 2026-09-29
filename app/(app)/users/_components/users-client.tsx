@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, Skeleton } from '@/components/ui';
+import { safeJson } from '@/lib/api-client';
 
 interface UserRow {
   id: string;
@@ -32,7 +33,7 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
       if (q) params.set('q', q);
       if (roleFilter) params.set('role', roleFilter);
       const res = await fetch(`/api/users?${params}`);
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load.');
       setUsers(data.users ?? []);
     } catch (e) {
@@ -56,7 +57,7 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
       await load();
     } catch (e) {
@@ -75,7 +76,7 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
       const link = `${window.location.origin}${data.activationPath}`;
       // Copy to clipboard for easy sharing.

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button, Dialog, Input, Select, Textarea } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 interface GradeOption {
   id: string;
@@ -83,7 +84,7 @@ export function AddStudentDialog({ grades, shifts, sessions, onDone }: Props) {
           photoUrl: photoPreview || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to add student.');
       reset();
       setOpen(false);

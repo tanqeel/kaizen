@@ -7,6 +7,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { DAY_NAMES } from '@/lib/days';
+import { safeJson } from '@/lib/api-client';
 
 /* ---------------------------------- types --------------------------------- */
 
@@ -56,7 +57,7 @@ async function api(path: string, method: string, body?: unknown): Promise<{ ok: 
   });
   let data: Record<string, unknown> = {};
   try {
-    data = (await res.json()) as Record<string, unknown>;
+    data = (await safeJson(res)) as Record<string, unknown>;
   } catch {
     /* non-JSON */
   }

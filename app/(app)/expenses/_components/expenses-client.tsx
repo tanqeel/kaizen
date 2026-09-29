@@ -12,6 +12,7 @@ import type { ExpenseRow } from '@/app/api/expenses/route';
 import type { ExpenseRequestRow } from '@/app/api/expense-requests/route';
 import type { BudgetRow } from '@/app/api/finance/budgets/route';
 import type { PnlResult } from '@/app/api/finance/pnl/route';
+import { safeJson } from '@/lib/api-client';
 
 interface Option { id: string; name: string }
 
@@ -65,7 +66,7 @@ function ExpensesTab({ heads, sources }: { heads: Option[]; sources: Option[] })
     setLoading(true);
     try {
       const res = await fetch(`/api/expenses?month=${month}`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load');
       setRows(data.expenses);
       setTotal(data.total);
@@ -178,7 +179,7 @@ function ExpenseForm({
           description: description.trim() || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to save');
       setAmount('');
       setDescription('');
@@ -272,7 +273,7 @@ function RequestsTab({ heads, sources, canApprove, userId }: {
     setError(null);
     try {
       const res = await fetch('/api/expense-requests', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load');
       setRows(data.requests);
     } catch (e) {
@@ -302,7 +303,7 @@ function RequestsTab({ heads, sources, canApprove, userId }: {
           headId,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to submit');
       setTitle('');
       setAmount('');
@@ -322,7 +323,7 @@ function RequestsTab({ heads, sources, canApprove, userId }: {
       confirmLabel: 'Reject',
     }))) return;
     const res = await fetch(`/api/expense-requests/${r.id}/reject`, { method: 'POST' });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) {
       setError(data.error ?? 'Failed to reject');
       return;
@@ -521,7 +522,7 @@ function ApproveRequestDialog({ request, sources, onClose, onApproved, onError }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceId }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to approve');
       onApproved();
     } catch (e) {
@@ -588,7 +589,7 @@ function BudgetsTab({ heads }: { heads: Option[] }) {
     setLoading(true);
     try {
       const res = await fetch('/api/finance/budgets', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load');
       setRows(data.budgets);
       setTotals(data.totals);
@@ -613,7 +614,7 @@ function BudgetsTab({ heads }: { heads: Option[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ headId, plannedAmount }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to save');
       setEditing((e) => { const c = { ...e }; delete c[headId]; return c; });
       load();
@@ -714,7 +715,7 @@ function PnlTab() {
     setLoading(true);
     try {
       const res = await fetch(`/api/finance/pnl?month=${month}`, { cache: 'no-store' });
-      const d = await res.json();
+      const d = await safeJson(res);
       if (!res.ok) throw new Error(d.error ?? 'Failed');
       setData(d);
     } catch {

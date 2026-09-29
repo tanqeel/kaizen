@@ -7,6 +7,7 @@ import { Icon } from '@/components/icons';
 import type { StudentRow } from '@/app/api/students/route';
 import { StudentImportCsv } from './import-csv';
 import { AddStudentDialog } from './add-student-dialog';
+import { safeJson } from '@/lib/api-client';
 
 interface GradeOption {
   id: string;
@@ -54,7 +55,7 @@ export function StudentDirectoryClient({
       if (params.sectionId) sp.set('sectionId', params.sectionId);
       const res = await fetch(`/api/students?${sp.toString()}`);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const data = await res.json();
+      const data = await safeJson(res);
       setRows(data.students ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load students');

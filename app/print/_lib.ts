@@ -18,11 +18,13 @@ export async function getPrintSchool(): Promise<PrintSchool> {
   const s = await prisma.school.findFirst({
     select: { name: true, address: true, phone: true, email: true },
   });
+  // Never invent school contact details on official documents:
+  // missing fields stay null and the document hides that line.
   return {
     name: s?.name ?? 'Kaizen Model School',
-    address: s?.address ?? 'Rohillanwali, District Muzaffargarh, Punjab',
-    phone: s?.phone ?? '+92 300 1234567',
-    email: s?.email ?? 'info@kaizen.edu.pk',
+    address: s?.address ?? null,
+    phone: s?.phone ?? null,
+    email: s?.email ?? null,
   };
 }
 

@@ -5,6 +5,7 @@ import type { Role } from '@prisma/client';
 import { Button, Badge, Card, EmptyState, PageHeader, Select } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { DATA_INTENTS } from '@/lib/ai/engine';
+import { safeJson } from '@/lib/api-client';
 
 export interface ChatConversation {
   id: string;
@@ -115,8 +116,12 @@ export function ChatClient({ role, greeting, chips, initialConversations }: Chat
     try {
       const res = await fetch(`/api/ai/chat?conversationId=${encodeURIComponent(id)}`);
       if (res.ok) {
-        const data = await res.json();
-        setMessages(data.conversation.messages);
+        try {
+          const data = await safeJson(res);
+          setMessages(data.conversation.messages);
+        } catch {
+          // Non-JSON response; leave messages empty.
+        }
       }
     } finally {
       setLoadingThread(false);
@@ -146,8 +151,10 @@ export function ChatClient({ role, greeting, chips, initialConversations }: Chat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: activeId, message }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
+      // Parse defensively: error responses may be non-JSON (proxy/HTML).
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+      if (!data?.reply) throw new Error('Empty response from server');
       const assistant: ChatMessage = {
         id: `local-a-${Date.now()}`,
         role: 'ASSISTANT',

@@ -24,6 +24,7 @@ import {
   useConfirm,
 } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 export interface AdminUser {
   id: string;
@@ -93,7 +94,7 @@ function AdminInner({ initialUsers, providers, activity, selfId }: AdminClientPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !u.isActive }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || 'Toggle failed');
       setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, isActive: data.user.isActive } : x)));
     } catch (err) {

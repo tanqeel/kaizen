@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 interface ApplyFormProps {
   schoolName: string;
@@ -58,7 +59,7 @@ export function ApplyForm({ schoolName, grades }: ApplyFormProps) {
           website,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await safeJson(res).catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? 'Submission failed. Please try again.');
       setDone(true);
     } catch (err) {

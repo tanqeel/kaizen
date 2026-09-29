@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Dialog } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { safeJson } from '@/lib/api-client';
 
 /** Deactivate (or reactivate) a teacher/staff record + linked login. */
 export function DeactivateStaffButton({
@@ -31,7 +32,7 @@ export function DeactivateStaffButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !isActive }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
       setOpen(false);
       router.refresh();

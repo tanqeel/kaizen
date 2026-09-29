@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, Skeleton } from '@/components/ui';
+import { safeJson } from '@/lib/api-client';
 
 interface RegRequest {
   id: string;
@@ -27,7 +28,7 @@ export function RegistrationsClient() {
     setLoading(true);
     try {
       const res = await fetch('/api/registrations');
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to load.');
       setRequests(data.requests ?? []);
     } catch (e) {
@@ -51,7 +52,7 @@ export function RegistrationsClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Decision failed.');
       if (data.activationPath) {
         const link = `${window.location.origin}${data.activationPath}`;

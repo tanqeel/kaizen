@@ -7,6 +7,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { pktDateTime } from '@/lib/format';
+import { safeJson } from '@/lib/api-client';
 
 interface Terminal {
   id: string; name: string; ipAddress: string; port: number;
@@ -32,7 +33,7 @@ export function BiometricClient({ canManage }: { canManage: boolean }) {
     setLoading(true);
     try {
       const res = await fetch('/api/biometric/terminals', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed');
       setTerminals(data.terminals);
     } catch {
@@ -178,7 +179,7 @@ function TerminalDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), ipAddress: ipAddress.trim(), port: parseInt(port, 10) }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Failed to save');
       onClose();
       onSaved();
@@ -236,7 +237,7 @@ function SimulatorPanel({ terminals, onScanned }: { terminals: Terminal[]; onSca
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/lookup/students?q=${encodeURIComponent(q.trim())}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await safeJson(res);
         setResults(res.ok ? data.students : []);
       } catch {
         setResults([]);
@@ -258,7 +259,7 @@ function SimulatorPanel({ terminals, onScanned }: { terminals: Terminal[]; onSca
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId: student.id, method, ...(terminalId ? { terminalId } : {}) }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error ?? 'Scan failed');
       setSuccess({ name: data.student.name, at: data.checkInTimeLabel, via: data.methodLabel });
       onScanned();

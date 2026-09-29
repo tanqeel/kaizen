@@ -4,6 +4,7 @@ import { Suspense, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/icons';
 import { Button, Input } from '@/components/ui';
+import { safeJson } from '@/lib/api-client';
 
 function LoginForm() {
   const router = useRouter();
@@ -39,7 +40,7 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        const data = (await res.json().catch(() => null)) as { forcePasswordReset?: boolean } | null;
+        const data = (await safeJson(res).catch(() => null)) as { forcePasswordReset?: boolean } | null;
         if (data?.forcePasswordReset) {
           router.push('/security');
         } else {
@@ -47,7 +48,7 @@ function LoginForm() {
         }
         router.refresh();
       } else {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const data = (await safeJson(res).catch(() => null)) as { error?: string } | null;
         setError(data?.error ?? 'Sign-in failed. Please try again.');
       }
     } catch {
