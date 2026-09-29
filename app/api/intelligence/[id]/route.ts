@@ -4,9 +4,18 @@ import { apiUser } from '@/lib/api-auth';
 import { auditLog } from '@/lib/audit';
 
 /**
- * PATCH /api/intelligence/[id] — review an insight.
- * Body: { status: 'REVIEWED' | 'DISMISSED' | 'IMPLEMENTED', note? }
- * Human-in-the-loop: insights never auto-apply; a principal/admin records the decision.
+ * PATCH /api/intelligence/[id] — review an insight (human-in-the-loop).
+ *
+ * Body: {
+ *   status: 'REVIEWED' | 'DISMISSED' | 'IMPLEMENTED',
+ *   reviewerNotes?: string,   // dedicated field, not appended to explanation
+ *   decision?: 'APPROVED' | 'REJECTED' | 'DEFERRED',
+ *   outcome?: string,          // what happened after implementation
+ * }
+ *
+ * Insights never auto-apply. A principal/admin records the decision,
+ * and later records the measured outcome — closing the
+ * Observe → Analyze → Detect → Recommend → Review → Decide → Implement → Measure → Learn loop.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await apiUser(['admin.manage', 'users.manage']);
@@ -25,17 +34,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid status.' }, { status: 400 });
   }
 
+  const decision = body.decision ? String(body.decision).toUpperCase() : null;
+  if (decision && !['APPROVED', 'REJECTED', 'DEFERRED'].includes(decision)) {
+    return NextResponse.json({ error: 'Invalid decision.' }, { status: 400 });
+  }
+
   const insight = await prisma.intelligenceInsight.findUnique({ where: { id } });
   if (!insight) return NextResponse.json({ error: 'Insight not found.' }, { status: 404 });
 
-  const note = String(body.note ?? '').trim() || null;
+  const reviewerNotes = String(body.reviewerNotes ?? body.note ?? '').trim() || null;
+  const outcome = String(body.outcome ?? '').trim() || null;
+
   await prisma.intelligenceInsight.update({
     where: { id },
     data: {
       status,
       reviewedById: auth.user.id,
       reviewedAt: new Date(),
-      ...(note ? { explanation: insight.explanation + `\n\nReviewer note: ${note}` } : {}),
+      ...(reviewerNotes ? { reviewerNotes } : {}),
+      ...(decision ? { decision, decidedAt: new Date() } : {}),
+      ...(outcome ? { outcome, measuredAt: new Date() } : {}),
     },
   });
 
@@ -47,7 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: 'INSIGHT_REVIEWED',
       targetType: 'IntelligenceInsight',
       targetId: id,
-      detail: `"${insight.title}" → ${status}`,
+      detail: `"${insight.title}" → ${status}${decision ? ` (${decision})` : ''}`,
     });
   }
 

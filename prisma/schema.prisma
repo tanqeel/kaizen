@@ -1043,11 +1043,21 @@ model IntelligenceInsight {
   evidence    String?
   period      String?
   confidence  String   @default("MEDIUM") // HIGH | MEDIUM | LOW
+  // Structured suggested action (JSON): { action, owner, dueDate }
+  suggestedAction String?
   status      String   @default("NEW") // NEW | REVIEWED | DISMISSED | IMPLEMENTED
+  // Human review
   reviewedById String?
   reviewedBy  User?    @relation("InsightReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviewedAt  DateTime?
+  reviewerNotes String?
+  // Decision / outcome / measurement loop
+  decision    String?  // APPROVED | REJECTED | DEFERRED
+  decidedAt   DateTime?
+  outcome     String?  // What happened after implementation
+  measuredAt  DateTime?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([schoolId, status])
 }
