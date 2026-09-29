@@ -51,7 +51,6 @@ export async function POST() {
 
   // Delete related records first
   await prisma.activationToken.deleteMany({ where: { userId: { in: ids } } });
-  await prisma.auditLog.deleteMany({ where: { userId: { in: ids } } });
   await prisma.registrationRequest.deleteMany({
     where: { OR: testPatterns.map((p) => ({ fullName: { contains: p } })) },
   });
