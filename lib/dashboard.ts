@@ -37,6 +37,7 @@ export interface DashboardSummary {
     pendingSections: Array<{ sectionId: string; label: string }>;
   };
   staffGate?: { checkIns: number; present: number; absent: number; checkOuts: number };
+  staffType?: string | null;
   student?: {
     name: string;
     monthPct: number | null;
@@ -277,10 +278,11 @@ export async function computeDashboardSummary(user: SafeUser): Promise<Dashboard
   }
 
   if (user.role === 'STAFF') {
-    const [total, checkIns, checkOuts] = await Promise.all([
+    const [total, checkIns, checkOuts, staffMember] = await Promise.all([
       prisma.student.count({ where: { isActive: true } }),
       prisma.gateCheckIn.count({ where: { date: today } }),
       prisma.gateCheckOut.count({ where: { date: today } }),
+      prisma.staffMember.findUnique({ where: { userId: user.id }, select: { staffType: true } }),
     ]);
     summary.staffGate = {
       checkIns,
@@ -288,6 +290,7 @@ export async function computeDashboardSummary(user: SafeUser): Promise<Dashboard
       absent: Math.max(0, total - checkIns),
       checkOuts,
     };
+    summary.staffType = staffMember?.staffType ?? null;
   }
 
   if (user.role === 'STUDENT') {

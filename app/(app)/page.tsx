@@ -311,28 +311,110 @@ function TeacherDashboard({ data }: { data: DashboardSummary }) {
 
 function StaffDashboard({ data }: { data: DashboardSummary }) {
   const g = data.staffGate!;
+  const staffType = data.staffType ?? 'OTHER';
+
+  // Job-specific dashboard content per staff type.
+  const titles: Record<string, { title: string; subtitle: string }> = {
+    ACCOUNTANT: { title: 'Finance operations', subtitle: `${todayPKT()} · fee collection & payroll` },
+    OFFICE: { title: 'Office operations', subtitle: `${todayPKT()} · admissions, records & communications` },
+    SECURITY: { title: 'Gate operations', subtitle: `${todayPKT()} · live check-in counters` },
+    PEON: { title: 'Support tasks', subtitle: `${todayPKT()} · daily duties` },
+    SANITARY: { title: 'Facility tasks', subtitle: `${todayPKT()} · cleanliness & maintenance` },
+    TEACHING: { title: 'Teaching support', subtitle: `${todayPKT()} · classes & materials` },
+    OTHER: { title: 'Staff workspace', subtitle: `${todayPKT()} · your tasks` },
+  };
+  const header = titles[staffType] ?? titles.OTHER;
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Gate operations" subtitle={`${todayPKT()} · live check-in counters`} />
+      <PageHeader title={header.title} subtitle={header.subtitle} />
+
+      {/* Common: today's attendance snapshot */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Stat label="Check-ins today" value={String(g.checkIns)} icon="fingerprint" tone="info" />
         <Stat label="Present on campus" value={String(g.present)} icon="check" tone="present" />
         <Stat label="Not yet arrived" value={String(g.absent)} icon="clock" tone="pending" />
         <Stat label="Check-outs" value={String(g.checkOuts)} icon="log-out" tone="neutral" />
       </div>
+
+      {/* Accountant: finance focus */}
+      {staffType === 'ACCOUNTANT' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Finance workspace</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Record fee payments, manage vouchers, and review payroll from the finance modules.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/fees" className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+                <Icon name="wallet" size={18} /> Fee collection
+              </Link>
+              <Link href="/payroll" className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
+                <Icon name="receipt-text" size={18} /> Payroll
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Office staff: admin focus */}
+      {staffType === 'OFFICE' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Office workspace</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Manage admissions, student records, announcements, and parent communications.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/admissions" className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+                <Icon name="users" size={18} /> Admissions
+              </Link>
+              <Link href="/notices" className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
+                <Icon name="megaphone" size={18} /> Notices
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Security: gate focus */}
+      {(staffType === 'SECURITY' || staffType === 'OTHER') && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Gate register</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Open the attendance module to check students in manually, search arrivals, and record check-outs.
+            </p>
+            <Link
+              href="/attendance"
+              className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              <Icon name="clipboard-check" size={18} /> Open attendance
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* My attendance — all staff */}
       <Card>
         <CardHeader>
-          <CardTitle>Gate register</CardTitle>
+          <CardTitle>My attendance</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Open the attendance module to check students in manually, search arrivals, and record check-outs.
+            View your own attendance record and leave balance.
           </p>
           <Link
-            href="/attendance"
-            className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            href="/my-attendance"
+            className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
           >
-            <Icon name="clipboard-check" size={18} /> Open attendance
+            <Icon name="calendar-days" size={18} /> View my attendance
           </Link>
         </CardContent>
       </Card>
@@ -411,7 +493,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {(user.role === 'SUPER_ADMIN' || user.role === 'PRINCIPAL') && (
+      {(user.role === 'SUPER_ADMIN' || user.role === 'PRINCIPAL' || user.role === 'ADMIN') && (
         <>
           <PageHeader
             title={`Welcome back, ${displayName}`}

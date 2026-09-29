@@ -23,7 +23,14 @@ export async function POST(req: Request) {
   if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
+  // Blocked lifecycle states cannot sign in.
+  if (['SUSPENDED', 'LOCKED', 'DEACTIVATED', 'REJECTED'].includes(user.status)) {
+    return NextResponse.json(
+      { error: `Your account is ${user.status.toLowerCase()}. Please contact the school office.` },
+      { status: 403 },
+    );
+  }
 
   await createSession(user.id);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, forcePasswordReset: user.forcePasswordReset });
 }

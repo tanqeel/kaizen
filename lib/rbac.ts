@@ -17,6 +17,7 @@ export type Permission =
   | 'finance.view'
   | 'comms.manage'
   | 'staff.manage'
+  | 'users.manage'
   | 'biometric.manage'
   | 'biometric.use'
   | 'ai.use'
@@ -44,31 +45,35 @@ export type Permission =
   | 'expenses.request'
   | 'expenses.approve';
 
-const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
+const ALL: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'];
+
+// ADMIN = operational manager: all principal permissions except super-admin-only actions.
+const ADMIN_OPS: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN'];
 
 const MATRIX: Record<Permission, Role[]> = {
   'dashboard.view': ALL,
-  'students.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
-  'students.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF'],
-  'attendance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'STAFF'],
-  'attendance.gate': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
-  'attendance.period': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
-  'attendance.conflicts': ['SUPER_ADMIN', 'PRINCIPAL'],
-  'academics.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
+  'students.manage': ADMIN_OPS,
+  'students.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STAFF'],
+  'attendance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STAFF'],
+  'attendance.gate': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF'],
+  'attendance.period': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER'],
+  'attendance.conflicts': ADMIN_OPS,
+  'academics.manage': ADMIN_OPS,
   'academics.view': ALL,
-  'exams.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
-  'exams.view': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT', 'STUDENT'],
-  'finance.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
-  'finance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF', 'PARENT'],
-  'comms.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
-  'staff.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
-  'biometric.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
-  'biometric.use': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'exams.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER'],
+  'exams.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT'],
+  'finance.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF'],
+  'finance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF', 'PARENT'],
+  'comms.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF'],
+  'staff.manage': ADMIN_OPS,
+  'users.manage': ADMIN_OPS,
+  'biometric.manage': ADMIN_OPS,
+  'biometric.use': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF'],
   'ai.use': ALL,
   'admin.manage': ['SUPER_ADMIN'],
   'portal.view': ['PARENT'],
   'diary.view': ALL,
-  'diary.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
+  'diary.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER'],
   'notices.view': ALL,
   'materials.view': ALL,
   'materials.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
@@ -129,7 +134,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/admissions', label: 'Admissions', perm: 'admissions.view' },
   { href: '/leave', label: 'Leave', perm: 'leave.view' },
   { href: '/staff/attendance', label: 'Staff Attendance', perm: 'staff.attendance.view' },
-  { href: '/my-attendance', label: 'My Attendance', perm: 'my.attendance.view', hideFor: ['SUPER_ADMIN', 'PRINCIPAL'] },
+  { href: '/my-attendance', label: 'My Attendance', perm: 'my.attendance.view', hideFor: ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN'] },
+  { href: '/intelligence', label: 'Intelligence', perm: 'users.manage' },
+  { href: '/audit-log', label: 'Audit Log', perm: 'users.manage' },
+  { href: '/registrations', label: 'Registrations', perm: 'users.manage' },
+  { href: '/users', label: 'Users', perm: 'users.manage' },
+  { href: '/security', label: 'Security', perm: 'dashboard.view' },
   { href: '/events', label: 'Events', perm: 'events.view' },
   { href: '/live-classes', label: 'Live Classes', perm: 'liveclasses.view' },
   { href: '/payroll', label: 'Payroll', perm: 'payroll.view' },

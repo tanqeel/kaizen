@@ -12,6 +12,7 @@ import { NotificationBell } from './NotificationBell';
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
   PRINCIPAL: 'Principal',
+  ADMIN: 'Admin',
   TEACHER: 'Teacher',
   STAFF: 'Staff',
   PARENT: 'Parent',
@@ -21,6 +22,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
   SUPER_ADMIN: 'Full access — manage everything',
   PRINCIPAL: 'School oversight, attendance & finance',
+  ADMIN: 'Operational management — users, admissions & records',
   TEACHER: 'Period registers, exams, timetable',
   STAFF: 'Gate check-ins, fees, notices',
   PARENT: 'Child status, fees, results',

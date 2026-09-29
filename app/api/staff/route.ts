@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { hashPassword } from '@/lib/password';
+import { generateKaizenId } from '@/lib/kaizen-id';
+import { auditLog } from '@/lib/audit';
 
 /**
  * POST /api/staff — create a teacher or staff member with login account.
@@ -71,8 +73,10 @@ export async function POST(req: Request) {
   const lastNum = lastEmp[0] ? parseInt(lastEmp[0].employeeId.replace(/\D/g, ''), 10) || 0 : 0;
   const employeeId = `EMP-${String(lastNum + 1).padStart(3, '0')}`;
 
+  const kaizenId = await generateKaizenId(kind as 'TEACHER' | 'STAFF');
   const user = await prisma.user.create({
     data: {
+      kaizenId,
       name,
       email,
       passwordHash: hashPassword(password),
@@ -80,8 +84,21 @@ export async function POST(req: Request) {
       phone,
       cnic: String(body.cnic ?? '').trim() || null,
       isActive: true,
+      status: 'ACTIVE',
     },
   });
+
+  const school = await prisma.school.findFirst({ select: { id: true } });
+  if (school) {
+    await auditLog({
+      schoolId: school.id,
+      actorId: auth.user.id,
+      action: 'ACCOUNT_CREATED',
+      targetType: 'User',
+      targetId: user.id,
+      detail: `${kind} account created: ${kaizenId}`,
+    });
+  }
 
   if (kind === 'TEACHER') {
     await prisma.teacher.create({

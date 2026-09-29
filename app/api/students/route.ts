@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
+import { studentScopeWhere } from '@/lib/resource-scope';
 import { todayPKT } from '@/lib/format';
 
 export interface StudentRow {
@@ -28,9 +29,14 @@ export async function GET(req: Request) {
   const sectionId = url.searchParams.get('sectionId')?.trim() ?? '';
   const today = todayPKT();
 
+  // Privacy: scope students to what this user may see.
+  // Teachers see only their assigned sections; parents only their children.
+  const scope = await studentScopeWhere({ id: auth.user.id, role: auth.user.role });
+
   const students = await prisma.student.findMany({
     where: {
       isActive: true,
+      ...scope,
       ...(gradeId ? { gradeId } : {}),
       ...(sectionId ? { sectionId } : {}),
       ...(q

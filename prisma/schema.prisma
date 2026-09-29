@@ -15,10 +15,34 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   PRINCIPAL
+  ADMIN
   TEACHER
   STAFF
   PARENT
   STUDENT
+}
+
+enum AccountStatus {
+  PENDING
+  VERIFICATION_REQUIRED
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  LOCKED
+  REJECTED
+  DEACTIVATED
+  GRADUATED
+  TRANSFERRED
+}
+
+enum StaffType {
+  TEACHING
+  ACCOUNTANT
+  OFFICE
+  SECURITY
+  PEON
+  SANITARY
+  OTHER
 }
 
 enum AttendanceStatus {
@@ -128,6 +152,9 @@ model School {
   staffAttendance       StaffAttendance[]
   schoolEvents          SchoolEvent[]
   feePolicy             FeePolicy?
+  auditLogs             AuditLog[]
+  registrationRequests  RegistrationRequest[]
+  intelligenceInsights  IntelligenceInsight[]
   liveClasses           LiveClass[]
 }
 
@@ -157,15 +184,18 @@ model Shift {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
+  kaizenId     String?       @unique // KZN-XXX-YYYY-NNNNNN; assigned on approval/creation
   name         String
-  email        String   @unique
+  email        String        @unique
   passwordHash String
   role         Role
   phone        String?
   cnic         String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  isActive     Boolean       @default(true)
+  status       AccountStatus @default(ACTIVE)
+  forcePasswordReset Boolean @default(false) // Admin can require password change on next login
+  createdAt    DateTime      @default(now())
 
   sessions              SessionToken[]
   teacher               Teacher?
@@ -182,6 +212,9 @@ model User {
   aiConversations       AiConversation[]
   aiUsageLogs           AiUsageLog[]
   decidedApplications   AdmissionApplication[]
+  auditLogs             AuditLog[]               @relation("AuditActor")
+  decidedRegistrations  RegistrationRequest[]    @relation("RegistrationDecider")
+  reviewedInsights      IntelligenceInsight[]    @relation("InsightReviewer")
   decidedLeaves         LeaveRequest[]         @relation("LeaveDecider")
   markedStaffAttendance StaffAttendance[]      @relation("StaffAttendanceMarker")
   approvedDiscounts     Discount[]             @relation("DiscountApprover")
@@ -224,16 +257,17 @@ model Teacher {
 }
 
 model StaffMember {
-  id            String   @id @default(cuid())
-  userId        String?  @unique
-  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  employeeId    String   @unique
+  id            String    @id @default(cuid())
+  userId        String?   @unique
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employeeId    String    @unique
   designation   String
+  staffType     StaffType @default(OTHER)
   phone         String
   cnic          String?
   hireDate      DateTime
   salaryMonthly Int
-  isActive      Boolean  @default(true)
+  isActive      Boolean   @default(true)
 
   leaveRequests   LeaveRequest[]
   staffAttendance StaffAttendance[]
@@ -312,6 +346,7 @@ model Grade {
   studyMaterials        StudyMaterial[]
   admissionApplications AdmissionApplication[]
   schoolEvents          SchoolEvent[]
+  registrationRequests  RegistrationRequest[]
 }
 
 model Section {
@@ -329,6 +364,7 @@ model Section {
   diaryEntries     DiaryEntry[]
   studyMaterials   StudyMaterial[]
   liveClasses      LiveClass[]
+  registrationRequests RegistrationRequest[]
 }
 
 model Subject {
@@ -947,6 +983,70 @@ model ExpenseRequest {
   expenseId     String?              @unique
   expense       Expense?             @relation(fields: [expenseId], references: [id], onDelete: SetNull)
   createdAt     DateTime             @default(now())
+
+  @@index([schoolId, status])
+}
+
+// ── Identity, audit & intelligence ────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String   // e.g. ACCOUNT_CREATED, PASSWORD_RESET, STUDENT_RECORD_VIEWED
+  targetType String? // e.g. User, Student, Payroll
+  targetId  String?
+  result    String   @default("ALLOWED") // ALLOWED | DENIED
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model RegistrationRequest {
+  id            String   @id @default(cuid())
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  fullName      String
+  accountType   Role
+  phone         String
+  email         String?
+  admissionNo   String?
+  gradeId       String?
+  grade         Grade?   @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  sectionId     String?
+  section       Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  guardianName  String?
+  guardianPhone String?
+  notes         String?
+  status        String   @default("PENDING") // PENDING | APPROVED | REJECTED | CORRECTION_REQUIRED
+  decidedById   String?
+  decidedBy     User?    @relation("RegistrationDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+  createdUserId String?  // User id created on approval
+  createdAt     DateTime @default(now())
+
+  @@index([schoolId, status])
+}
+
+model IntelligenceInsight {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  category    String   // ATTENTION | OPPORTUNITY | POSITIVE | OPTIMIZATION | PERMISSION
+  title       String
+  explanation String
+  evidence    String?
+  period      String?
+  confidence  String   @default("MEDIUM") // HIGH | MEDIUM | LOW
+  status      String   @default("NEW") // NEW | REVIEWED | DISMISSED | IMPLEMENTED
+  reviewedById String?
+  reviewedBy  User?    @relation("InsightReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
 
   @@index([schoolId, status])
 }

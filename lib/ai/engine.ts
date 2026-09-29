@@ -598,6 +598,12 @@ const HELP_CAPABILITIES: Record<Role, string[]> = {
     'Top fee defaulters by outstanding balance ("fee defaulters")',
     'Sections that haven\'t submitted period attendance today ("pending submissions")',
   ],
+  ADMIN: [
+    'School snapshot — student/teacher counts, today\'s attendance, open conflicts, overdue fees ("school stats")',
+    'Open attendance conflicts with student and date details ("show open conflicts")',
+    'Top fee defaulters by outstanding balance ("fee defaulters")',
+    'Sections that haven\'t submitted period attendance today ("pending submissions")',
+  ],
   TEACHER: [
     'Your classes today — period, subject, section and room ("my schedule today")',
     'Absentees in your sections today ("who is absent in my class")',
@@ -737,6 +743,7 @@ export async function runIntent(
 export const FOLLOW_UP_CHIPS: Record<Role, string[]> = {
   SUPER_ADMIN: ['School stats', 'Show open conflicts', 'Fee defaulters', 'Pending submissions'],
   PRINCIPAL: ['School stats', 'Show open conflicts', 'Fee defaulters', 'Pending submissions'],
+  ADMIN: ['School stats', 'Show open conflicts', 'Fee defaulters', 'Pending submissions'],
   TEACHER: ['My schedule today', 'Who is absent in my class today?'],
   STAFF: ['Fee defaulters', 'Help'],
   PARENT: ['Was my child marked present today?', 'When did my child arrive?', 'What fees are pending?', "Show my child's results"],

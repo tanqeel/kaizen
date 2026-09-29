@@ -50,7 +50,13 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        goNext();
+        const data = (await res.json().catch(() => null)) as { forcePasswordReset?: boolean } | null;
+        if (data?.forcePasswordReset) {
+          router.push('/security');
+        } else {
+          goNext();
+        }
+        router.refresh();
       } else {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         setError(data?.error ?? 'Sign-in failed. Please try again.');
