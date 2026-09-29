@@ -9,7 +9,18 @@ export async function POST() {
     if (auth.error) return auth.error;
     // Try to count tokens — if table doesn't exist, this throws.
     const count = await prisma.activationToken.count();
-    return NextResponse.json({ ok: true, tableExists: true, count });
+    // Try creating a test token to verify the full flow works.
+    let testTokenOk = false;
+    let testError = '';
+    try {
+      const { createActivationToken } = await import('@/lib/activation');
+      // Use a dummy user ID — this will fail FK constraint, but tests the code path.
+      await createActivationToken('test-dummy-id', 'ACTIVATION');
+      testTokenOk = true;
+    } catch (e) {
+      testError = String(e).slice(0, 200);
+    }
+    return NextResponse.json({ ok: true, tableExists: true, count, testTokenOk, testError });
   } catch (e) {
     const msg = String(e);
     if (msg.includes('does not exist') || msg.includes('relation')) {

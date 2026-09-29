@@ -84,7 +84,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     },
   });
 
-  const { path: activationPath } = await createActivationToken(user.id, 'ACTIVATION');
+  const { path: activationPath } = await createActivationToken(user.id, 'ACTIVATION').catch((e) => {
+    console.error('Activation token creation failed:', e);
+    throw new Error(`Failed to create activation token: ${String(e).slice(0, 200)}`);
+  });
 
   await prisma.registrationRequest.update({
     where: { id },
