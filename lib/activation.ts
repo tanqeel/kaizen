@@ -40,16 +40,16 @@ export async function createActivationToken(
   const tokenHash = hashToken(rawToken);
   const expiresAt = new Date(Date.now() + EXPIRY_HOURS * 60 * 60 * 1000);
 
-  await prisma.$transaction([
-    // Invalidate prior unused tokens for this user+purpose.
-    prisma.activationToken.updateMany({
-      where: { userId, purpose, usedAt: null },
-      data: { usedAt: new Date() },
-    }),
-    prisma.activationToken.create({
-      data: { userId, tokenHash, purpose, expiresAt },
-    }),
-  ]);
+  // Note: No $transaction — production uses Prisma HTTP mode which doesn't
+  // support interactive transactions. These two operations are idempotent
+  // and safe to run sequentially.
+  await prisma.activationToken.updateMany({
+    where: { userId, purpose, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  await prisma.activationToken.create({
+    data: { userId, tokenHash, purpose, expiresAt },
+  });
 
   return { rawToken, path: `/activate/${rawToken}` };
 }

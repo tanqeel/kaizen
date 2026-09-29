@@ -42,25 +42,21 @@ export async function POST(req: Request) {
     );
   }
 
-  // Set password, activate account, consume token — atomically.
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: valid.userId },
-      data: {
-        passwordHash: hashPassword(password),
-        status: 'ACTIVE',
-        isActive: true,
-        forcePasswordReset: false,
-      },
-    }),
-    prisma.activationToken.updateMany({
-      where: {
-        userId: valid.userId,
-        usedAt: null,
-      },
-      data: { usedAt: new Date() },
-    }),
-  ]);
+  // Set password, activate account, consume token — sequentially
+  // (no $transaction: Prisma HTTP mode doesn't support it).
+  await prisma.user.update({
+    where: { id: valid.userId },
+    data: {
+      passwordHash: hashPassword(password),
+      status: 'ACTIVE',
+      isActive: true,
+      forcePasswordReset: false,
+    },
+  });
+  await prisma.activationToken.updateMany({
+    where: { userId: valid.userId, usedAt: null },
+    data: { usedAt: new Date() },
+  });
   // Ensure the specific token is marked used (covers edge cases).
   await consumeActivationToken(token);
 
