@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { NotificationChannel, NotificationStatus, NotificationType } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 
 const TYPES = new Set(Object.values(NotificationType));
 const CHANNELS = new Set(Object.values(NotificationChannel));

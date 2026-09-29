@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { headsForStudent } from '@/lib/fees';
 import { todayPKT } from '@/lib/format';
 

@@ -46,12 +46,11 @@ export async function POST(req: Request) {
   if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
-  // Blocked lifecycle states cannot sign in.
-  if (['SUSPENDED', 'LOCKED', 'DEACTIVATED', 'REJECTED'].includes(user.status)) {
-    return NextResponse.json(
-      { error: `Your account is ${user.status.toLowerCase()}. Please contact the school office.` },
-      { status: 403 },
-    );
+  // Centralized lifecycle check — PENDING/SUSPENDED/LOCKED/etc. cannot sign in.
+  const { canLogin, loginBlockedReason } = await import('@/lib/account-lifecycle');
+  const userStatus = (user.status ?? 'ACTIVE') as import('@prisma/client').AccountStatus;
+  if (!canLogin(userStatus)) {
+    return NextResponse.json({ error: loginBlockedReason(userStatus) }, { status: 403 });
   }
 
   await createSession(user.id);

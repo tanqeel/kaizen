@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 
 const STATUSES = ['DRAFT', 'GENERATED', 'PAID'] as const;
 type PayslipStatus = (typeof STATUSES)[number];

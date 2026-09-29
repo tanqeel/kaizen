@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { ANNOUNCEMENT_AUDIENCES, resolveRecipients } from '@/lib/comms';
 import type { AnnouncementAudience, AnnouncementPriority } from '@prisma/client';
 

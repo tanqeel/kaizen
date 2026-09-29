@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 
 /** DELETE /api/expenses/[id] — removes an expense entry (confirm on the client). */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

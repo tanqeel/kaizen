@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 
 /** DELETE /api/comms/announcements/[id] — removes an announcement. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

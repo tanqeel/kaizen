@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 
 /** GET /api/discounts/[id] — read-only single discount (edit = delete + recreate). */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

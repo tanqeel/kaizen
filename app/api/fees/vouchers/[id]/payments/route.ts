@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 import { balanceDueWithPolicy, effectiveTotalWithPolicy, paidSum, type FinePolicy } from '@/lib/fees';
 import { pkr } from '@/lib/format';
 import { invalidateDashboard } from '@/lib/dashboard';

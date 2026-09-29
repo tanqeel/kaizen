@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 
 /** Defaults applied when no FeePolicy row exists yet. */
 export const FEE_POLICY_DEFAULTS = { fineGraceDays: 10, finePerDay: 0 };

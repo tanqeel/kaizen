@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 import type { DiscountType } from '@prisma/client';
 
 export const DISCOUNT_TYPES: readonly DiscountType[] = [

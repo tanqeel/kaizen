@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 import { ANNOUNCEMENT_AUDIENCES, AUDIENCE_LABELS, resolveRecipients } from '@/lib/comms';
 import type { AnnouncementAudience } from '@prisma/client';
 

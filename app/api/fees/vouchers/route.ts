@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser } from '@/lib/api-auth';
 import { balanceDueWithPolicy, currentFineAmount, displayStatus, effectiveTotalWithPolicy, monthLabel, paidSum, type DisplayStatus, type FinePolicy } from '@/lib/fees';
 import { childStudentIds } from '@/lib/parents';
 import { todayPKT } from '@/lib/format';

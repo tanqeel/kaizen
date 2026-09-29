@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 
 /** PKT month window [start, end) for a YYYY-MM string, or null when invalid. */
 function monthWindow(monthStr: string): { start: Date; end: Date } | null {
