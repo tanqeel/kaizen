@@ -30,17 +30,19 @@ async function analyzeAttendance(schoolId: string): Promise<InsightDraft[]> {
   const insights: InsightDraft[] = [];
   const recent = daysAgo(14);
   const older = daysAgo(28);
+  // School-scoped: attendance rows belong to a school via section → grade → school.
+  const schoolFilter = { section: { grade: { schoolId } } };
 
   // Overall attendance rate: last 14 days vs previous 14 days.
   const [recentRows, olderRows] = await Promise.all([
     prisma.periodAttendance.groupBy({
       by: ['status'],
-      where: { date: { gte: recent } },
+      where: { date: { gte: recent }, ...schoolFilter },
       _count: { status: true },
     }),
     prisma.periodAttendance.groupBy({
       by: ['status'],
-      where: { date: { gte: older, lt: recent } },
+      where: { date: { gte: older, lt: recent }, ...schoolFilter },
       _count: { status: true },
     }),
   ]);
@@ -87,15 +89,17 @@ async function analyzeFees(schoolId: string): Promise<InsightDraft[]> {
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
+  // School-scoped via student → section → grade → school.
+  const schoolFilter = { student: { section: { grade: { schoolId } } } };
 
   const vouchers = await prisma.feeVoucher.aggregate({
-    where: { month, year },
+    where: { month, year, ...schoolFilter },
     _sum: { totalAmount: true },
     _count: true,
   });
   const paidAgg = await prisma.payment.aggregate({
     where: {
-      voucher: { month, year },
+      voucher: { month, year, ...schoolFilter },
     },
     _sum: { amount: true },
   });
@@ -123,10 +127,24 @@ async function analyzeFees(schoolId: string): Promise<InsightDraft[]> {
 async function analyzeWorkflows(schoolId: string): Promise<InsightDraft[]> {
   const insights: InsightDraft[] = [];
   // Detect repeated manual notification patterns → suggest templates.
+  // School-scoped via the notified student (the dominant case). Broadcast
+  // notifications without a student are counted via the announcement's school.
   const week = daysAgo(7);
-  const notifCount = await prisma.notificationLog.count({
-    where: { sentAt: { gte: new Date(week) } },
-  });
+  const [studentNotifCount, announcementCount] = await Promise.all([
+    prisma.notificationLog.count({
+      where: {
+        sentAt: { gte: new Date(week) },
+        student: { section: { grade: { schoolId } } },
+      },
+    }),
+    prisma.announcement.count({
+      where: {
+        createdAt: { gte: new Date(week) },
+        schoolId,
+      },
+    }),
+  ]);
+  const notifCount = studentNotifCount + announcementCount;
   if (notifCount > 100) {
     insights.push({
       category: 'OPTIMIZATION',
