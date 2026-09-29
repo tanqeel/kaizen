@@ -436,6 +436,7 @@ model ExamSchedule {
   date       DateTime
   startTime  String
   totalMarks Int
+  room       String?
 
   results ExamResult[]
 }

@@ -14,7 +14,7 @@ interface Props {
     rollNo: string;
     studentId: string;
     photoUrl: string | null;
-    papers: Array<{ subject: string; date: string; time: string; room: string }>;
+    papers: Array<{ subject: string; date: string; time: string; room: string | null }>;
   };
 }
 
@@ -63,7 +63,7 @@ export function AdmitCardDoc({ school, card }: Props) {
                 <td>{p.subject}</td>
                 <td>{p.date}</td>
                 <td>{p.time}</td>
-                <td>{p.room}</td>
+                <td>{p.room ?? '—'}</td>
               </tr>
             ))}
           </tbody>

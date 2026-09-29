@@ -32,6 +32,7 @@ export async function GET(req: Request) {
       date: s.date.toISOString(),
       startTime: s.startTime,
       totalMarks: s.totalMarks,
+      room: s.room,
       resultCount: s._count.results,
       deletable: s._count.results === 0,
     })),
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
   let body: {
     examTermId?: string; subjectId?: string; gradeId?: string;
-    date?: string; startTime?: string; totalMarks?: number;
+    date?: string; startTime?: string; totalMarks?: number; room?: string;
   };
   try {
     body = await req.json();
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
   const date = body.date ? new Date(body.date) : null;
   const startTime = body.startTime?.trim();
   const totalMarks = Number(body.totalMarks);
+  const room = typeof body.room === 'string' && body.room.trim() ? body.room.trim().slice(0, 40) : null;
   if (!examTermId || !subjectId || !gradeId) {
     return NextResponse.json({ error: 'Term, subject and grade are required' }, { status: 400 });
   }
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
   }
 
   const schedule = await prisma.examSchedule.create({
-    data: { examTermId, subjectId, gradeId, date, startTime, totalMarks },
+    data: { examTermId, subjectId, gradeId, date, startTime, totalMarks, room },
   });
   return NextResponse.json({ schedule }, { status: 201 });
 }

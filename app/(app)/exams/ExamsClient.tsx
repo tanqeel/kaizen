@@ -18,7 +18,7 @@ export interface GradeLite { id: string; name: string; level: number; }
 
 interface ScheduleLite {
   id: string; termId: string; term: string; subjectId: string; subject: string;
-  gradeId: string; grade: string; date: string; startTime: string;
+  gradeId: string; grade: string; date: string; startTime: string; room: string | null;
   totalMarks: number; resultCount: number; deletable: boolean;
 }
 
@@ -124,7 +124,7 @@ export function ExamsClient({
 
   const [schedules, setSchedules] = useState<ScheduleLite[]>([]);
   const [schedTermFilter, setSchedTermFilter] = useState('');
-  const [newSched, setNewSched] = useState({ examTermId: '', subjectId: '', gradeId: '', date: '', startTime: '', totalMarks: '100' });
+  const [newSched, setNewSched] = useState({ examTermId: '', subjectId: '', gradeId: '', date: '', startTime: '', totalMarks: '100', room: '' });
 
   const refreshSchedules = useCallback(async (termId: string) => {
     const r = await api(`/api/exams/schedules${termId ? `?termId=${termId}` : ''}`, 'GET');
@@ -133,7 +133,7 @@ export function ExamsClient({
         id: String(s.id), termId: String(s.termId), term: String(s.term),
         subjectId: String(s.subjectId), subject: String(s.subject),
         gradeId: String(s.gradeId), grade: String(s.grade),
-        date: String(s.date), startTime: String(s.startTime), totalMarks: Number(s.totalMarks),
+        date: String(s.date), startTime: String(s.startTime), totalMarks: Number(s.totalMarks), room: typeof s.room === 'string' ? s.room : null,
         resultCount: Number(s.resultCount), deletable: Boolean(s.deletable),
       })));
     }
@@ -145,7 +145,7 @@ export function ExamsClient({
     flash(null, false);
     const r = await api('/api/exams/schedules', 'POST', { ...newSched, totalMarks: Number(newSched.totalMarks) });
     if (!r.ok) { flash(String(r.data.error ?? 'Could not schedule exam'), true); return; }
-    setNewSched({ examTermId: '', subjectId: '', gradeId: '', date: '', startTime: '', totalMarks: '100' });
+    setNewSched({ examTermId: '', subjectId: '', gradeId: '', date: '', startTime: '', totalMarks: '100', room: '' });
     await refreshSchedules(schedTermFilter);
     flash('Exam scheduled.', false);
   };
@@ -413,6 +413,7 @@ export function ExamsClient({
                 <Input label="Date" required type="date" value={newSched.date} onChange={(e) => setNewSched({ ...newSched, date: e.target.value })} />
                 <Input label="Start time" required type="time" value={newSched.startTime} onChange={(e) => setNewSched({ ...newSched, startTime: e.target.value })} />
                 <Input label="Total marks" required type="number" min={1} max={1000} value={newSched.totalMarks} onChange={(e) => setNewSched({ ...newSched, totalMarks: e.target.value })} />
+                <Input label="Room (optional)" placeholder="e.g. R-5A" value={newSched.room} onChange={(e) => setNewSched({ ...newSched, room: e.target.value })} />
               </FormGrid>
               <Button
                 className="mt-3"
@@ -462,7 +463,7 @@ export function ExamsClient({
                   <div key={termId}>
                     <h3 className="mb-2 text-sm font-bold text-slate-900 uppercase tracking-wide dark:text-white">{group.term}</h3>
                     <Table>
-                      <THead><TRow><TH>Date</TH><TH>Subject</TH><TH>Grade</TH><TH>Start</TH><TH>Marks</TH><TH>Results</TH>{canManage && <TH className="no-print"><span className="sr-only">Actions</span></TH>}</TRow></THead>
+                      <THead><TRow><TH>Date</TH><TH>Subject</TH><TH>Grade</TH><TH>Start</TH><TH>Room</TH><TH>Marks</TH><TH>Results</TH>{canManage && <TH className="no-print"><span className="sr-only">Actions</span></TH>}</TRow></THead>
                       <TBody>
                         {group.items.map((s) => (
                           <TRow key={s.id}>
@@ -470,6 +471,7 @@ export function ExamsClient({
                             <TD>{s.subject}</TD>
                             <TD>{s.grade}</TD>
                             <TD className="tnum">{s.startTime}</TD>
+                            <TD>{s.room ?? '—'}</TD>
                             <TD className="tnum">{s.totalMarks}</TD>
                             <TD className="tnum">{s.resultCount > 0 ? s.resultCount : '—'}</TD>
                             {canManage && (

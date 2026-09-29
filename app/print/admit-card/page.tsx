@@ -42,11 +42,11 @@ export default async function AdmitCardPage({
         rollNo: student.admissionNo,
         studentId: student.user?.kaizenId ?? student.admissionNo,
         photoUrl: student.photoUrl,
-        papers: schedules.map((s, i) => ({
+        papers: schedules.map((s) => ({
           subject: s.subject.name,
           date: fmtDate(s.date),
           time: s.startTime,
-          room: String(101 + (i % 3)),
+          room: s.room,
         })),
       }}
     />

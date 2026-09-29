@@ -112,7 +112,7 @@ export default async function TimetablePage({
         title="Class Timetable"
         subtitle={
           selectedSectionId
-            ? `${sectionName} · Grade ${gradeName}`
+            ? `${sectionName} · ${gradeName}`
             : 'No sections available for your account.'
         }
         actions={
@@ -149,7 +149,7 @@ export default async function TimetablePage({
                 defaultValue={selectedSectionId}
                 options={sections.map((s) => ({
                   value: s.id,
-                  label: `${s.name} — Grade ${s.grade.name}`,
+                  label: `${s.name} — ${s.grade.name}`,
                 }))}
                 className="min-w-[240px] flex-1"
               />

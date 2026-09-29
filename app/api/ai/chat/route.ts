@@ -9,7 +9,7 @@ import {
   studyGuidance,
   generalGuidance,
 } from '@/lib/ai/engine';
-import { buildSystemPrompt, generateText, type AiProviderId } from '@/lib/ai/providers';
+import { buildSystemPrompt, generateText, providerShortLabel, type AiProviderId } from '@/lib/ai/providers';
 
 /** 401/403 guard for API routes. Returns the user or a JSON error response. */
 async function guard(perm: Permission): Promise<{ user: SafeUser } | NextResponse> {
@@ -24,11 +24,19 @@ async function guard(perm: Permission): Promise<{ user: SafeUser } | NextRespons
 }
 
 const PROVIDER_LABELS: Record<AiProviderId, string> = {
-  ollama: 'Ollama',
-  pollinations: 'Pollinations',
-  huggingface: 'Hugging Face',
-  gemini: 'Gemini',
-  'rule-based': 'Guidance',
+  ollama: providerShortLabel('ollama'),
+  pollinations: providerShortLabel('pollinations'),
+  groq: providerShortLabel('groq'),
+  cerebras: providerShortLabel('cerebras'),
+  sambanova: providerShortLabel('sambanova'),
+  openrouter: providerShortLabel('openrouter'),
+  mistral: providerShortLabel('mistral'),
+  'github-models': providerShortLabel('github-models'),
+  together: providerShortLabel('together'),
+  fireworks: providerShortLabel('fireworks'),
+  huggingface: providerShortLabel('huggingface'),
+  gemini: providerShortLabel('gemini'),
+  'rule-based': providerShortLabel('rule-based'),
 };
 
 // ── POST /api/ai/chat ───────────────────────────────────────────────────────

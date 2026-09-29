@@ -275,7 +275,7 @@ export function ChatClient({ role, greeting, chips, initialConversations }: Chat
                 <MessageBubble key={m.id} message={m} />
               ))
             )}
-            {sending && <TypingBubble />}
+            {sending && messages[messages.length - 1]?.role !== 'ASSISTANT' && <TypingBubble />}
           </div>
 
           {/* Follow-up chips */}
