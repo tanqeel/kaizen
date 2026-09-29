@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { hashPassword } from '@/lib/password';
 import { generateKaizenId } from '@/lib/kaizen-id';
 import { auditLog } from '@/lib/audit';
+import { createActivationToken } from '@/lib/activation';
 
 /**
  * POST /api/registrations/[id]/decide — approve or reject a registration request.
- * Body: { decision: 'APPROVED' | 'REJECTED' | 'CORRECTION_REQUIRED', tempPassword? }
- * On approval: creates the User with a unique KAIZEN ID (status ACTIVE).
- * The temp password is hashed immediately and never stored or returned in plaintext
- * beyond this single response — the admin must share it securely out-of-band.
- * Principal / Super Admin only.
+ * Body: { decision: 'APPROVED' | 'REJECTED' | 'CORRECTION_REQUIRED' }
+ *
+ * On approval: creates the User with a unique KAIZEN ID and a one-time
+ * activation link. The user sets their OWN password via the link — the admin
+ * never sees or sets any password. Principal / Super Admin only.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await apiUser('users.manage');
@@ -56,14 +58,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: true, decision });
   }
 
-  // APPROVED — create the user account.
-  const tempPassword = String(body.tempPassword ?? '').trim();
-  if (tempPassword.length < 8) {
-    return NextResponse.json(
-      { error: 'A temporary password of at least 8 characters is required to approve.' },
-      { status: 400 },
-    );
-  }
+  // APPROVED — create the user account with an unusable password hash.
+  // The user sets their real password via the one-time activation link.
   const email = request.email || `${request.phone.replace(/\D/g, '')}@kaizen.local`;
   const emailTaken = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (emailTaken) {
@@ -71,19 +67,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const kaizenId = await generateKaizenId(request.accountType);
+  // Random 32-byte hash — unusable as a password; replaced on activation.
+  const placeholderHash = hashPassword(randomBytes(32).toString('hex'));
+
   const user = await prisma.user.create({
     data: {
       kaizenId,
       name: request.fullName,
       email,
-      passwordHash: hashPassword(tempPassword),
+      passwordHash: placeholderHash,
       role: request.accountType,
       phone: request.phone,
       isActive: true,
-      status: 'ACTIVE',
-      forcePasswordReset: true, // Must set their own password on first login.
+      status: 'PENDING', // Becomes ACTIVE when they set their password.
+      forcePasswordReset: false,
     },
   });
+
+  const { path: activationPath } = await createActivationToken(user.id, 'ACTIVATION');
 
   await prisma.registrationRequest.update({
     where: { id },
@@ -102,17 +103,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       action: 'REGISTRATION_APPROVED',
       targetType: 'User',
       targetId: user.id,
-      detail: `Approved ${request.fullName}; KAIZEN ID ${kaizenId}`,
+      detail: `Approved ${request.fullName}; KAIZEN ID ${kaizenId}; activation link issued`,
     });
   }
 
-  // The temp password is returned ONCE so the admin can share it securely.
-  // It is never stored in plaintext anywhere.
+  // Return the activation link ONCE. The admin shares it with the user;
+  // the user sets their own password. No password is ever visible to anyone.
   return NextResponse.json({
     ok: true,
     decision: 'APPROVED',
     kaizenId,
-    tempPassword,
-    message: 'Share the KAIZEN ID and temporary password with the user securely. They must change it on first login.',
+    activationPath,
+    message: 'Share the KAIZEN ID and activation link with the user. They will set their own private password.',
   });
 }

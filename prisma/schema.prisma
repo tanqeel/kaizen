@@ -214,6 +214,7 @@ model User {
   decidedApplications   AdmissionApplication[]
   auditLogs             AuditLog[]               @relation("AuditActor")
   decidedRegistrations  RegistrationRequest[]    @relation("RegistrationDecider")
+  activationTokens    ActivationToken[]
   reviewedInsights      IntelligenceInsight[]    @relation("InsightReviewer")
   decidedLeaves         LeaveRequest[]         @relation("LeaveDecider")
   markedStaffAttendance StaffAttendance[]      @relation("StaffAttendanceMarker")
@@ -1049,4 +1050,17 @@ model IntelligenceInsight {
   createdAt   DateTime @default(now())
 
   @@index([schoolId, status])
+}
+
+model ActivationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique // SHA-256 of the raw token; raw token never stored
+  purpose   String   @default("ACTIVATION") // ACTIVATION | PASSWORD_RESET
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
