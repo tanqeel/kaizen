@@ -65,8 +65,7 @@ async function activatePost(req: Request) {
     SET "passwordHash" = ${passwordHash},
         "status" = 'ACTIVE',
         "isActive" = true,
-        "forcePasswordReset" = false,
-        "updatedAt" = ${now}
+        "forcePasswordReset" = false
     WHERE id = ${valid.userId}
   `;
   await prisma.$executeRaw`
