@@ -65,11 +65,7 @@ async function activatePost(req: Request) {
       forcePasswordReset: false,
     },
   });
-  await prisma.activationToken.updateMany({
-    where: { userId: valid.userId, usedAt: null },
-    data: { usedAt: new Date() },
-  });
-  // Ensure the specific token is marked used (covers edge cases).
+  // Mark the specific token as used (single operation, no transaction needed).
   await consumeActivationToken(token);
 
   return NextResponse.json({ ok: true });
