@@ -14,6 +14,18 @@ import {
  * The user chooses their own password — admins never see it.
  */
 export async function POST(req: Request) {
+  try {
+    return await activatePost(req);
+  } catch (e) {
+    console.error('Activation failed:', e);
+    return NextResponse.json(
+      { error: `Activation failed: ${String(e).slice(0, 200)}` },
+      { status: 500 },
+    );
+  }
+}
+
+async function activatePost(req: Request) {
   let body: { token?: string; password?: string };
   try {
     body = await req.json();
