@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 /**
  * POST /api/admin/cleanup-test-data
@@ -8,9 +8,8 @@ import { getSession } from '@/lib/auth';
  * Delete this file after use.
  */
 export async function POST() {
-  const session = await getSession();
-  const role = (session as { user?: { role?: string } } | null)?.user?.role;
-  if (!session || role !== 'SUPERADMIN') {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
