@@ -140,6 +140,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 >
                   <Icon name="award" size={16} /> Character Certificate
                 </Link>
+                <Link
+                  href={`/print/admission-form?studentId=${student.id}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Icon name="printer" size={16} /> Admission Form
+                </Link>
               </>
             )}
             <Link

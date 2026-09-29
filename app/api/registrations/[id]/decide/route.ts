@@ -85,9 +85,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     },
   });
 
-  const { path: activationPath } = await createActivationToken(user.id, 'ACTIVATION').catch((e) => {
+  const { path: activationPath } = await createActivationToken(user.id, 'ACTIVATION').catch(async (e) => {
     console.error('Activation token creation failed:', e);
-    throw new Error(`Failed to create activation token: ${String(e).slice(0, 200)}`);
+    // Roll back the created user so a retry doesn't hit "email already exists".
+    await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+    throw new Error('Failed to create activation token. Please try approving again.');
   });
 
   await prisma.registrationRequest.update({

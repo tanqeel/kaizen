@@ -4,11 +4,10 @@ import { prisma } from '@/lib/db';
 import { ConfirmProvider } from '@/components/ui';
 import { ExpensesClient } from './_components/expenses-client';
 
-/** /expenses — finance tabs need finance.manage; Requests tab needs expenses.request. */
+/** /expenses — admin-only. finance.manage (SUPER_ADMIN, PRINCIPAL, ADMIN). */
 export default async function ExpensesPage() {
   const user = await requireUser();
-  requirePagePermission(user.role, 'expenses.request');
-  const canFinance = can(user.role, 'finance.manage');
+  requirePagePermission(user.role, 'finance.manage');
 
   const school = await prisma.school.findFirst({ select: { id: true } });
   const [heads, sources] = school
@@ -32,7 +31,6 @@ export default async function ExpensesPage() {
         heads={heads}
         sources={sources}
         canApprove={can(user.role, 'expenses.approve')}
-        canFinance={canFinance}
         userId={user.id}
       />
     </ConfirmProvider>

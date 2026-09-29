@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Role, User } from '@prisma/client';
-import { DEMO_LOGINS } from '@/lib/format';
 import { Icon } from './icons';
 import { Badge } from './ui';
 import { ThemeToggle } from './ThemeToggle';
@@ -42,133 +41,6 @@ async function postJson(url: string, body: unknown): Promise<boolean> {
   }
 }
 
-/** Persona switcher — only rendered for demo sessions. Re-issues the session as the chosen role. */
-function PersonaSwitcher({ currentRole }: { currentRole: Role }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [switching, setSwitching] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  const switchTo = async (role: string) => {
-    if (role === currentRole) {
-      setOpen(false);
-      return;
-    }
-    setSwitching(role);
-    setError(null);
-    const ok = await postJson('/api/auth/demo', { role });
-    setSwitching(null);
-    if (ok) {
-      setOpen(false);
-      router.push('/');
-      router.refresh();
-    } else {
-      setError('Could not switch persona. Please try again.');
-    }
-  };
-
-  return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label="Switch demo persona"
-        className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20"
-      >
-        <Icon name="users" size={18} />
-        <span className="hidden sm:inline">Demo: {ROLE_LABELS[currentRole]}</span>
-        <Icon name="chevron-down" size={16} className={open ? 'rotate-180' : ''} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-pop)] dark:border-slate-700 dark:bg-slate-900">
-          <p className="border-b border-slate-200 px-4 py-2.5 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:text-slate-400">
-            Switch persona
-          </p>
-          <ul role="listbox" aria-label="Demo personas" className="nice-scroll max-h-80 overflow-y-auto py-1">
-            {DEMO_LOGINS.map((d) => {
-              const role = d.role as Role;
-              const active = role === currentRole;
-              return (
-                <li key={d.role}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    disabled={switching !== null}
-                    onClick={() => switchTo(d.role)}
-                    className={
-                      'flex w-full cursor-pointer items-start gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-wait ' +
-                      (active
-                        ? 'bg-brand-50 dark:bg-brand-500/10'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800')
-                    }
-                  >
-                    <span
-                      className={
-                        'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' +
-                        (active
-                          ? 'bg-brand-600 text-white'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400')
-                      }
-                    >
-                      {switching === d.role ? (
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                          <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                        </svg>
-                      ) : (
-                        <Icon name="user" size={16} />
-                      )}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        {d.label}
-                        {active && (
-                          <Badge variant="info" className="px-1.5">
-                            current
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="block text-xs text-slate-500 dark:text-slate-400">
-                        {ROLE_DESCRIPTIONS[role]}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {error && (
-            <p role="alert" className="border-t border-slate-200 px-4 py-2.5 text-xs text-rose-600 dark:border-slate-800 dark:text-rose-400">
-              {error}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function LogoutButton() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -201,12 +73,10 @@ function LogoutButton() {
 
 export function Header({
   user,
-  isDemo,
   schoolName,
   sessionLabel,
 }: {
   user: Pick<User, 'name' | 'role'>;
-  isDemo: boolean;
   schoolName: string;
   sessionLabel: string;
 }) {
@@ -219,12 +89,6 @@ export function Header({
           <p className="hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">{sessionLabel}</p>
         </div>
 
-        {isDemo && (
-          <Badge variant="pending" className="hidden sm:inline-flex" title="This is a demo session">
-            Demo
-          </Badge>
-        )}
-        {isDemo && <PersonaSwitcher currentRole={user.role} />}
 
         <div
           className="flex min-h-[44px] items-center gap-2 rounded-lg px-2"

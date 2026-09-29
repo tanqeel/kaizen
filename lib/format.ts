@@ -36,16 +36,3 @@ export function pktDate(d: Date | string): string {
     timeZone: PKT, day: 'numeric', month: 'short', year: 'numeric',
   }).format(dt);
 }
-
-/** Demo password shown on the login screen. */
-export const DEMO_PASSWORD_HINT = 'demo1234';
-
-/** Demo login emails per role. */
-export const DEMO_LOGINS: Array<{ role: string; email: string; label: string }> = [
-  { role: 'SUPER_ADMIN', email: 'superadmin@kaizen.pk', label: 'Super Admin' },
-  { role: 'PRINCIPAL', email: 'principal@kaizen.pk', label: 'Principal' },
-  { role: 'TEACHER', email: 'teacher1@kaizen.pk', label: 'Teacher' },
-  { role: 'STAFF', email: 'staff1@kaizen.pk', label: 'Staff' },
-  { role: 'PARENT', email: 'parent1@kaizen.pk', label: 'Parent' },
-  { role: 'STUDENT', email: 'student1@kaizen.pk', label: 'Student' },
-];

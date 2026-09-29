@@ -222,6 +222,15 @@ export function FeesClient({ canManage, grades }: { canManage: boolean; grades: 
                   >
                     <Icon name="eye" size={18} /> View
                   </Link>
+                  <Link
+                    href={`/print/fee-voucher/${r.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    title="Print fee voucher"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <Icon name="printer" size={18} /> Print
+                  </Link>
                 </TD>
               </TRow>
             ))}

@@ -49,7 +49,7 @@ function toRow(r: {
  * sees only their own requests.
  */
 export async function GET(req: Request) {
-  const auth = await apiUser('expenses.request');
+  const auth = await apiUser('finance.manage');
   if (auth.error) return auth.error;
   const { user } = auth;
 
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
 
 /** POST /api/expense-requests { title, description?, amount, headId } */
 export async function POST(req: Request) {
-  const auth = await apiUser('expenses.request');
+  const auth = await apiUser('finance.manage');
   if (auth.error) return auth.error;
   const { user } = auth;
 

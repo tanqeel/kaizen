@@ -439,6 +439,16 @@ export function ExamsClient({
                 <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={schedules.length === 0}>
                   <Icon name="printer" size={16} /> Print date sheet
                 </Button>
+                {schedTermFilter && (
+                  <a
+                    href={`/print/date-sheet?termId=${schedTermFilter}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  >
+                    <Icon name="printer" size={16} /> KAIZEN design
+                  </a>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -690,10 +700,20 @@ export function ExamsClient({
                           )}
                         </TBody>
                       </Table>
-                      <div className="no-print mt-4 flex justify-end">
+                      <div className="no-print mt-4 flex justify-end gap-2">
                         <Button variant="secondary" onClick={() => window.print()}>
                           <Icon name="printer" size={16} /> Print report card
                         </Button>
+                        {repStudentId && repTermId && (
+                          <a
+                            href={`/print/result-card?studentId=${repStudentId}&termId=${repTermId}`}
+                            target="_blank"
+                            rel="noopener"
+                            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                          >
+                            <Icon name="printer" size={16} /> KAIZEN design
+                          </a>
+                        )}
                       </div>
                     </>
                   )}

@@ -49,7 +49,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="lg:pl-64">
         <Header
           user={user}
-          isDemo={session?.isDemo ?? false}
           schoolName={schoolName}
           sessionLabel={sessionLabel}
         />

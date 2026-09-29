@@ -34,6 +34,18 @@ const PROVIDER_LABELS: Record<AiProviderId, string> = {
 // ── POST /api/ai/chat ───────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  try {
+    return await chatPost(req);
+  } catch (e) {
+    console.error('[kaizen-ai] chat failed:', e);
+    return NextResponse.json(
+      { error: 'Sorry — something went wrong processing your message. Please try again.' },
+      { status: 500 },
+    );
+  }
+}
+
+async function chatPost(req: Request) {
   const started = Date.now();
   const auth = await guard('ai.use');
   if (auth instanceof NextResponse) return auth;
@@ -99,23 +111,27 @@ export async function POST(req: Request) {
     conversationId = created.id;
   }
 
-  // Persist messages + usage log.
-  await prisma.aiMessage.createMany({
-    data: [
-      { conversationId, role: 'USER', content: message, toolsUsed: intent },
-      { conversationId, role: 'ASSISTANT', content: reply, toolsUsed: intent },
-    ],
-  });
-  const latencyMs = Date.now() - started;
-  await prisma.aiUsageLog.create({
-    data: {
-      userId: user.id,
-      query: message.slice(0, 500),
-      intent,
-      provider,
-      latencyMs,
-    },
-  });
+  // Persist messages + usage log. Best-effort: logging must never break the reply.
+  try {
+    await prisma.aiMessage.createMany({
+      data: [
+        { conversationId, role: 'USER', content: message, toolsUsed: intent },
+        { conversationId, role: 'ASSISTANT', content: reply, toolsUsed: intent },
+      ],
+    });
+    const latencyMs = Date.now() - started;
+    await prisma.aiUsageLog.create({
+      data: {
+        userId: user.id,
+        query: message.slice(0, 500),
+        intent,
+        provider,
+        latencyMs,
+      },
+    });
+  } catch (e) {
+    console.warn('[kaizen-ai] persistence failed (non-fatal):', (e as Error).message);
+  }
 
   return NextResponse.json({ reply, intent, provider, providerLabel, conversationId, sources });
 }

@@ -19,35 +19,34 @@ function currentMonth(): string {
   return todayPKT().slice(0, 7);
 }
 
-export function ExpensesClient({ heads, sources, canApprove, canFinance, userId }: {
-  heads: Option[]; sources: Option[]; canApprove: boolean; canFinance: boolean; userId: string;
+export function ExpensesClient({ heads, sources, canApprove, userId }: {
+  heads: Option[]; sources: Option[]; canApprove: boolean; userId: string;
 }) {
-  // Non-finance staff (e.g. teachers) only see the Requests tab.
-  const [tab, setTab] = useState(canFinance ? 'expenses' : 'requests');
-  const financeTabs: { id: string; label: string; icon: IconName }[] = [
+  // Admin-only page (finance.manage). All tabs visible.
+  const [tab, setTab] = useState('expenses');
+  const tabs: { id: string; label: string; icon: IconName }[] = [
     { id: 'expenses', label: 'Expenses', icon: 'receipt-text' },
+    { id: 'requests', label: 'Requests', icon: 'clipboard-check' as IconName },
     { id: 'budgets', label: 'Budgets', icon: 'wallet' },
     { id: 'pnl', label: 'P&L', icon: 'dashboard' },
-  ];
-  const tabs = [
-    ...(canFinance ? [financeTabs[0]] : []),
-    { id: 'requests', label: 'Requests', icon: 'clipboard-check' as IconName },
-    ...(canFinance ? financeTabs.slice(1) : []),
   ];
 
   return (
     <div>
-      <PageHeader title="Expenses & Budgets" subtitle="School spending, expense requests, planned budgets, and monthly profit & loss." />
+      <PageHeader
+        title="Expenses & Budgets"
+        subtitle="School spending, expense requests, planned budgets, and monthly profit & loss."
+      />
       <Tabs
         tabs={tabs}
         value={tab}
         onChange={setTab}
         className="mb-6"
       />
-      {tab === 'expenses' && canFinance && <ExpensesTab heads={heads} sources={sources} />}
+      {tab === 'expenses' && <ExpensesTab heads={heads} sources={sources} />}
       {tab === 'requests' && <RequestsTab heads={heads} sources={sources} canApprove={canApprove} userId={userId} />}
-      {tab === 'budgets' && canFinance && <BudgetsTab heads={heads} />}
-      {tab === 'pnl' && canFinance && <PnlTab />}
+      {tab === 'budgets' && <BudgetsTab heads={heads} />}
+      {tab === 'pnl' && <PnlTab />}
     </div>
   );
 }

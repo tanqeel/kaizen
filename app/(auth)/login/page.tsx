@@ -2,19 +2,8 @@
 
 import { Suspense, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { Role } from '@prisma/client';
-import { DEMO_LOGINS, DEMO_PASSWORD_HINT } from '@/lib/format';
 import { Icon } from '@/components/icons';
 import { Button, Input } from '@/components/ui';
-
-const ROLE_DESCRIPTIONS: Record<string, string> = {
-  SUPER_ADMIN: 'Full access — manage everything',
-  PRINCIPAL: 'School oversight, attendance & finance',
-  TEACHER: 'Period registers, exams, timetable',
-  STAFF: 'Gate check-ins, fees, notices',
-  PARENT: 'Child status, fees, results',
-  STUDENT: 'Own attendance & results',
-};
 
 function LoginForm() {
   const router = useRouter();
@@ -60,27 +49,6 @@ function LoginForm() {
       } else {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         setError(data?.error ?? 'Sign-in failed. Please try again.');
-      }
-    } catch {
-      setError('Could not reach the server. Check your connection and try again.');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleDemo = async (role: Role) => {
-    setError(null);
-    setBusy(role);
-    try {
-      const res = await fetch('/api/auth/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-      if (res.ok) {
-        goNext();
-      } else {
-        setError('Demo login failed for this role. Please try again.');
       }
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -150,45 +118,11 @@ function LoginForm() {
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-        <span className="text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
-          One-click demo login
-        </span>
-        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" aria-label="Demo personas">
-        {DEMO_LOGINS.map((d) => (
-          <button
-            key={d.role}
-            type="button"
-            onClick={() => handleDemo(d.role as Role)}
-            disabled={busy !== null}
-            className="flex min-h-[56px] cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand-300 hover:bg-brand-50/50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/5"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-              {busy === d.role ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                </svg>
-              ) : (
-                <Icon name="user" size={18} />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{d.label}</span>
-              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                {ROLE_DESCRIPTIONS[d.role]}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <p className="mt-5 rounded-lg bg-slate-100 px-3.5 py-2.5 text-center text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-        Demo password for all personas: <code className="tnum font-mono font-bold">{DEMO_PASSWORD_HINT}</code>
+      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-300">
+        New here?{' '}
+        <a href="/register" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
+          Create an account request
+        </a>
       </p>
     </div>
   );
@@ -254,7 +188,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="mt-1 mb-6 hidden text-sm text-slate-500 lg:block dark:text-slate-400">
-            Sign in to your school account, or explore with a one-click demo login.
+            Sign in to your school account, or request a new one.
           </p>
           <Suspense fallback={<p className="text-sm text-slate-500">Loading sign-in…</p>}>
             <LoginForm />
