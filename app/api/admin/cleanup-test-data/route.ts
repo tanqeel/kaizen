@@ -9,7 +9,8 @@ import { getSession } from '@/lib/auth';
  */
 export async function POST() {
   const session = await getSession();
-  if (!session || (session as { role?: string }).role !== 'SUPERADMIN') {
+  const role = (session as { user?: { role?: string } } | null)?.user?.role;
+  if (!session || role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
