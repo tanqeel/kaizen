@@ -56,6 +56,7 @@ export default async function StudentIdCardPage({ params }: { params: Promise<{ 
           dob: student.dob ? pktDate(student.dob) : null,
           parentName: guardian?.name ?? null,
           parentPhone: guardian?.phone ?? null,
+          photoUrl: student.photoUrl,
           issueDate: pktDate(todayPKT()),
         }}
       />

@@ -53,6 +53,7 @@ export default async function StaffIdCardPage({ params }: { params: Promise<{ id
           employeeId: record.employeeId,
           designation: teacher ? 'Teacher' : (staffMember!.designation ?? 'Staff'),
           phone: record.phone ?? null,
+          photoUrl: null,
           issueDate: pktDate(todayPKT()),
         }}
       />

@@ -12,6 +12,10 @@ export default async function StudentsPage() {
     include: { sections: { select: { id: true, name: true }, orderBy: { name: 'asc' } } },
     orderBy: { level: 'asc' },
   });
+  const [shifts, sessions] = await Promise.all([
+    prisma.shift.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.academicSession.findMany({ select: { id: true, name: true }, orderBy: { name: 'desc' } }),
+  ]);
 
   return (
     <div>
@@ -25,6 +29,8 @@ export default async function StudentsPage() {
           name: g.name,
           sections: g.sections,
         }))}
+        shifts={shifts}
+        sessions={sessions}
         canManage={can(user.role, 'students.manage')}
       />
     </div>

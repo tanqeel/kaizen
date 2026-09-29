@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { requirePagePermission } from '@/lib/rbac';
+import { can, requirePagePermission } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
 import { childStudentIds } from '@/lib/parents';
 import {
@@ -115,7 +116,15 @@ export default async function TimetablePage({
             : 'No sections available for your account.'
         }
         actions={
-          <div className="no-print">
+          <div className="no-print flex items-center gap-2">
+            {can(user.role, 'academics.manage') && (
+              <Link
+                href="/academics"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <Icon name="book-open" size={16} /> Edit Timetable
+              </Link>
+            )}
             <PrintButton />
           </div>
         }

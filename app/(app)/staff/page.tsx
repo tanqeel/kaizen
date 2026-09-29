@@ -6,6 +6,8 @@ import { pkr, pktDate } from '@/lib/format';
 import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader, Table, TBody, TD, TH, THead, TRow } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import PerformanceSection from './_components/performance-section';
+import { AddStaffDialog } from './_components/add-staff-dialog';
+import { DeactivateStaffButton } from './_components/deactivate-staff-button';
 
 export default async function StaffPage() {
   const user = await requireUser();
@@ -13,7 +15,6 @@ export default async function StaffPage() {
 
   const [teachers, staffMembers] = await Promise.all([
     prisma.teacher.findMany({
-      where: { isActive: true },
       include: {
         user: true,
         allocations: { include: { subject: true }, orderBy: { subject: { name: 'asc' } } },
@@ -21,7 +22,6 @@ export default async function StaffPage() {
       orderBy: { employeeId: 'asc' },
     }),
     prisma.staffMember.findMany({
-      where: { isActive: true },
       include: { user: true },
       orderBy: { employeeId: 'asc' },
     }),
@@ -32,6 +32,7 @@ export default async function StaffPage() {
       <PageHeader
         title="Teachers & Staff"
         subtitle="Faculty and operational staff. Salary figures are visible to leadership roles (Super Admin, Principal) only."
+        actions={<AddStaffDialog />}
       />
 
       <Card className="mb-6">
@@ -54,6 +55,7 @@ export default async function StaffPage() {
                   <TH>Monthly salary</TH>
                   <TH>Hired</TH>
                   <TH>ID Card</TH>
+                  <TH>Actions</TH>
                 </TRow>
               </THead>
               <TBody>
@@ -88,6 +90,9 @@ export default async function StaffPage() {
                         <Icon name="id-card" size={14} /> ID Card
                       </Link>
                     </TD>
+                    <TD>
+                      <DeactivateStaffButton id={t.id} kind="TEACHER" name={t.user?.name ?? t.employeeId} isActive={t.isActive} />
+                    </TD>
                   </TRow>
                   ))}
               </TBody>
@@ -116,6 +121,7 @@ export default async function StaffPage() {
                   <TH>Monthly salary</TH>
                   <TH>Hired</TH>
                   <TH>ID Card</TH>
+                  <TH>Actions</TH>
                 </TRow>
               </THead>
               <TBody>
@@ -137,6 +143,9 @@ export default async function StaffPage() {
                       >
                         <Icon name="id-card" size={14} /> ID Card
                       </Link>
+                    </TD>
+                    <TD>
+                      <DeactivateStaffButton id={s.id} kind="STAFF" name={s.user?.name ?? s.employeeId} isActive={s.isActive} />
                     </TD>
                   </TRow>
                   ))}

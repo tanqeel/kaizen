@@ -6,6 +6,7 @@ import { Badge, Card, CardContent, EmptyState, Input, Select, Skeleton } from '@
 import { Icon } from '@/components/icons';
 import type { StudentRow } from '@/app/api/students/route';
 import { StudentImportCsv } from './import-csv';
+import { AddStudentDialog } from './add-student-dialog';
 
 interface GradeOption {
   id: string;
@@ -19,7 +20,17 @@ function gateBadge(status: StudentRow['gateToday']) {
   return <Badge variant="neutral">Not arrived</Badge>;
 }
 
-export function StudentDirectoryClient({ grades, canManage }: { grades: GradeOption[]; canManage: boolean }) {
+export function StudentDirectoryClient({
+  grades,
+  shifts,
+  sessions,
+  canManage,
+}: {
+  grades: GradeOption[];
+  shifts: Array<{ id: string; name: string }>;
+  sessions: Array<{ id: string; name: string }>;
+  canManage: boolean;
+}) {
   const [q, setQ] = useState('');
   const [gradeId, setGradeId] = useState('');
   const [sectionId, setSectionId] = useState('');
@@ -94,7 +105,13 @@ export function StudentDirectoryClient({ grades, canManage }: { grades: GradeOpt
               {loading ? 'Loading…' : `${rows.length} student${rows.length === 1 ? '' : 's'}`}
             </p>
             {canManage && (
-              <div className="pb-0.5">
+              <div className="flex items-end gap-2 pb-0.5">
+                <AddStudentDialog
+                  grades={grades}
+                  shifts={shifts}
+                  sessions={sessions}
+                  onDone={() => fetchRows({ q, gradeId, sectionId })}
+                />
                 <StudentImportCsv onDone={() => fetchRows({ q, gradeId, sectionId })} />
               </div>
             )}

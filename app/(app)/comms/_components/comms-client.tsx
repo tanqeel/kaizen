@@ -78,6 +78,7 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,12 +151,54 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
     load();
   };
 
+  const startEdit = (a: Announcement) => {
+    setEditingId(a.id);
+    setTitle(a.title);
+    setBody(a.body);
+    setPriority(a.priority as 'NORMAL' | 'URGENT');
+    setNotice(null);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle('');
+    setBody('');
+    setPriority('NORMAL');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    if (!title.trim() || !body.trim()) {
+      setError('Title and message are both required.');
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch(`/api/comms/announcements/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), body: body.trim(), priority }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save');
+      cancelEdit();
+      setNotice('Announcement updated.');
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const gradeName = grades.find((g) => g.id === gradeId)?.name ?? '';
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
       <Card className="xl:col-span-2">
-        <CardHeader><CardTitle>Compose announcement</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{editingId ? 'Edit announcement' : 'Compose announcement'}</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Input label="Title" placeholder="e.g. Parent-Teacher Meeting on Friday" value={title} onChange={(e) => setTitle(e.target.value)} required />
           <Textarea label="Message" placeholder="Write the notice…" value={body} onChange={(e) => setBody(e.target.value)} rows={6} required />
@@ -166,17 +209,30 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
               onChange={(e) => setPriority(e.target.value as 'NORMAL' | 'URGENT')}
               options={[{ value: 'NORMAL', label: 'Normal' }, { value: 'URGENT', label: 'Urgent' }]}
             />
-            <Select label="Audience" value={audience} onChange={(e) => setAudience(e.target.value)} options={AUDIENCE_OPTIONS} />
+            {!editingId && (
+              <Select label="Audience" value={audience} onChange={(e) => setAudience(e.target.value)} options={AUDIENCE_OPTIONS} />
+            )}
           </FormGrid>
-          {audience === 'GRADES' && (
+          {!editingId && audience === 'GRADES' && (
             <Select label="Grade" value={gradeId} onChange={(e) => setGradeId(e.target.value)} options={grades.map((g) => ({ value: g.id, label: g.name }))} />
           )}
           {error && <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
           {notice && <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</p>}
-          <div>
-            <Button onClick={openPreview}>
-              <Icon name="eye" size={18} /> Preview & send
-            </Button>
+          <div className="flex gap-2">
+            {editingId ? (
+              <>
+                <Button onClick={saveEdit} disabled={sending}>
+                  <Icon name="check" size={18} /> {sending ? 'Saving…' : 'Save changes'}
+                </Button>
+                <Button variant="secondary" onClick={cancelEdit}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button onClick={openPreview}>
+                <Icon name="eye" size={18} /> Preview & send
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -202,9 +258,14 @@ function AnnouncementsTab({ grades }: { grades: GradeOption[] }) {
                         To {AUDIENCE_SHORT[a.audience] ?? a.audience} · by {a.createdBy} · {pktDateTime(a.createdAt)}
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => remove(a.id, a.title)} aria-label={`Delete announcement “${a.title}”`}>
-                      <Icon name="x" size={18} />
-                    </Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(a)} aria-label={`Edit announcement “${a.title}”`}>
+                        <Icon name="book-open" size={18} />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => remove(a.id, a.title)} aria-label={`Delete announcement “${a.title}”`}>
+                        <Icon name="x" size={18} />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

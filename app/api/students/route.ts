@@ -66,3 +66,104 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ students: rows, total: rows.length, date: today });
 }
+
+/**
+ * POST /api/students — create a single student (admission).
+ * Body: { name, gradeId, sectionId, shiftId, sessionId, dob?, gender?, bForm?, address?,
+ *         admissionNo? (auto-generated if omitted), parentName?, parentPhone? }
+ * Creates the student + optionally links/creates a parent user.
+ * students.manage only.
+ */
+export async function POST(req: Request) {
+  const auth = await apiUser('students.manage');
+  if (auth.error) return auth.error;
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
+  }
+
+  const name = String(body.name ?? '').trim();
+  const gradeId = String(body.gradeId ?? '').trim();
+  const sectionId = String(body.sectionId ?? '').trim();
+  const shiftId = String(body.shiftId ?? '').trim();
+  const sessionId = String(body.sessionId ?? '').trim();
+  if (!name) return NextResponse.json({ error: 'Student name is required.' }, { status: 400 });
+  if (!gradeId || !sectionId || !shiftId || !sessionId) {
+    return NextResponse.json({ error: 'Grade, section, shift and session are required.' }, { status: 400 });
+  }
+
+  // Validate the section belongs to the grade.
+  const section = await prisma.section.findFirst({ where: { id: sectionId, gradeId } });
+  if (!section) return NextResponse.json({ error: 'Section does not belong to the selected grade.' }, { status: 400 });
+
+  // Admission number: use provided or auto-generate KZN-YY-XXXX.
+  let admissionNo = String(body.admissionNo ?? '').trim().toUpperCase();
+  if (admissionNo) {
+    const exists = await prisma.student.findUnique({ where: { admissionNo } });
+    if (exists) return NextResponse.json({ error: `Admission no "${admissionNo}" already exists.` }, { status: 409 });
+  } else {
+    const year = new Date().getFullYear().toString().slice(2);
+    const prefix = `KZN-${year}-`;
+    const last = await prisma.student.findFirst({
+      where: { admissionNo: { startsWith: prefix } },
+      orderBy: { admissionNo: 'desc' },
+      select: { admissionNo: true },
+    });
+    const nextNum = last ? parseInt(last.admissionNo.slice(prefix.length), 10) + 1 : 1;
+    admissionNo = `${prefix}${String(nextNum).padStart(4, '0')}`;
+  }
+
+  const dobRaw = String(body.dob ?? '').trim();
+  let dob: Date | null = null;
+  if (dobRaw) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) {
+      return NextResponse.json({ error: 'DOB must be YYYY-MM-DD.' }, { status: 400 });
+    }
+    dob = new Date(dobRaw + 'T00:00:00');
+    if (Number.isNaN(dob.getTime()) || dob.getTime() > Date.now()) {
+      return NextResponse.json({ error: 'DOB must be a valid past date.' }, { status: 400 });
+    }
+  }
+
+  const gender = String(body.gender ?? '').trim() || null;
+  const bForm = String(body.bForm ?? '').trim() || null;
+  const address = String(body.address ?? '').trim() || null;
+  const photoUrl = String(body.photoUrl ?? '').trim() || null;
+
+  const student = await prisma.student.create({
+    data: {
+      admissionNo,
+      name,
+      dob,
+      gender,
+      bForm,
+      gradeId,
+      sectionId,
+      shiftId,
+      sessionId,
+      address,
+      photoUrl,
+      isActive: true,
+    },
+  });
+
+  // Optional parent linking (phone is the dedupe key; required by schema).
+  const parentName = String(body.parentName ?? '').trim();
+  const parentPhone = String(body.parentPhone ?? '').trim();
+  if (parentPhone) {
+    let parent = await prisma.parent.findFirst({ where: { phone: parentPhone } });
+    if (!parent) {
+      parent = await prisma.parent.create({
+        data: { name: parentName || 'Parent', phone: parentPhone },
+      });
+    }
+    await prisma.studentParent.create({
+      data: { studentId: student.id, parentId: parent.id },
+    });
+  }
+
+  return NextResponse.json({ student: { id: student.id, admissionNo: student.admissionNo, name: student.name } }, { status: 201 });
+}

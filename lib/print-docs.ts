@@ -25,6 +25,7 @@ export interface StudentIdCardData {
   dob: string | null;
   parentName: string | null;
   parentPhone: string | null;
+  photoUrl: string | null;
   issueDate: string;
 }
 
@@ -33,6 +34,7 @@ export interface StaffIdCardData {
   employeeId: string;
   designation: string;
   phone: string | null;
+  photoUrl: string | null;
   issueDate: string;
 }
 
@@ -87,33 +89,42 @@ const ID_CARD_CSS =
   `
   .card {
     width: 85.6mm; height: 54mm; max-width: 100%;
-    border: 1.5px solid #111; border-radius: 2mm; overflow: hidden;
+    border: none; border-radius: 2.5mm; overflow: hidden;
     display: flex; flex-direction: column; page-break-inside: avoid;
+    background: linear-gradient(135deg, #1b2a4a 0%, #243b63 100%);
+    color: #fff; position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
   }
-  .chead { background: #0f3d2e; color: #fff; padding: 1.6mm 3mm; display: flex; align-items: center; gap: 2.5mm; }
-  .chead img { width: 8mm; height: 8mm; object-fit: contain; background: #fff; border-radius: 1mm; flex-shrink: 0; }
-  .chead h2 { font-size: 10.5pt; margin: 0; line-height: 1.15; }
-  .chead .smeta { font-size: 6.5pt; opacity: .85; margin-top: .4mm; line-height: 1.25; }
-  .cbody { flex: 1; display: flex; gap: 3mm; padding: 2.4mm 3mm; min-height: 0; }
+  .card::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2.5mm;
+    background: linear-gradient(90deg, #d4a017, #f0c420, #d4a017);
+  }
+  .chead { padding: 2mm 3mm 1.5mm; display: flex; align-items: center; gap: 2.5mm; }
+  .chead img { width: 9mm; height: 9mm; object-fit: contain; background: #fff; border-radius: 1.5mm; flex-shrink: 0; padding: .5mm; }
+  .chead h2 { font-size: 11pt; margin: 0; line-height: 1.15; letter-spacing: .02em; }
+  .chead .smeta { font-size: 6.5pt; opacity: .8; margin-top: .4mm; line-height: 1.25; }
+  .ctag { font-size: 6pt; letter-spacing: .14em; text-transform: uppercase; color: #f0c420; margin-top: .6mm; }
+  .cbody { flex: 1; display: flex; gap: 3mm; padding: 1.5mm 3mm 2.5mm; min-height: 0; }
   .photo {
     width: 20mm; height: 24mm; flex-shrink: 0;
-    border: 1px dashed #777; border-radius: 1mm;
+    border: 1.5px solid #f0c420; border-radius: 1.5mm;
     display: flex; align-items: center; justify-content: center;
-    font-size: 7pt; color: #777; text-transform: uppercase; letter-spacing: .08em;
-    background: #f4f4f4;
+    font-size: 7pt; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .08em;
+    background: rgba(255,255,255,.08); overflow: hidden;
   }
+  .photo img { width: 100%; height: 100%; object-fit: cover; }
   .cinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1mm; }
-  .cinfo .pname { font-size: 10.5pt; font-weight: bold; margin: 0 0 .6mm; line-height: 1.2; word-break: break-word; }
+  .cinfo .pname { font-size: 11pt; font-weight: bold; margin: 0 0 .8mm; line-height: 1.2; word-break: break-word; color: #fff; }
   .crow { display: flex; font-size: 7.5pt; line-height: 1.35; gap: 1.5mm; }
-  .crow .k { color: #555; flex-shrink: 0; min-width: 15mm; }
-  .crow .v { font-weight: bold; word-break: break-word; }
+  .crow .k { color: #f0c420; flex-shrink: 0; min-width: 15mm; font-weight: 600; }
+  .crow .v { font-weight: 600; word-break: break-word; color: #fff; }
   .cfoot {
-    border-top: 1px solid #111; padding: 1.6mm 3mm;
+    padding: 0 3mm 3.5mm;
     display: flex; justify-content: space-between; align-items: flex-end;
-    font-size: 7pt;
+    font-size: 6.5pt; color: rgba(255,255,255,.75);
   }
   .sig { text-align: center; }
-  .sig .line { width: 30mm; border-top: 1px solid #111; margin-bottom: .6mm; height: 5mm; }
+  .sig .line { width: 28mm; border-top: 1px solid rgba(255,255,255,.6); margin-bottom: .6mm; height: 4mm; }
   @media print {
     body { padding: 0; }
     @page { margin: 8mm; }
@@ -122,13 +133,16 @@ const ID_CARD_CSS =
 
 function idCardShell(
   school: PrintSchool,
-  photoBox: string,
+  photoUrl: string | null,
   infoRows: string,
   footLeft: string,
   sigLabel: string,
 ): string {
   const logo = school.logoUrl ? `<img src="${esc(school.logoUrl)}" alt="School logo">` : '';
   const smeta = [school.address, school.phone].filter((s): s is string => !!s).map(esc).join(' · ');
+  const photo = photoUrl
+    ? `<img src="${esc(photoUrl)}" alt="Photo">`
+    : 'Photo';
   return `
   <div class="card">
     <div class="chead">
@@ -136,10 +150,11 @@ function idCardShell(
       <div>
         <h2>${esc(school.name)}</h2>
         ${smeta ? `<div class="smeta">${smeta}</div>` : ''}
+        <div class="ctag">Student Identity Card</div>
       </div>
     </div>
     <div class="cbody">
-      <div class="photo">${photoBox}</div>
+      <div class="photo">${photo}</div>
       <div class="cinfo">${infoRows}</div>
     </div>
     <div class="cfoot">
@@ -157,7 +172,7 @@ export function printStudentIdCard(school: PrintSchool, c: StudentIdCardData): v
   const parent = [c.parentName, c.parentPhone].filter(Boolean).join(' · ');
   const body = idCardShell(
     school,
-    'Photo',
+    c.photoUrl,
     `<p class="pname">${esc(c.name)}</p>` +
       idRow('Adm No', c.admissionNo) +
       idRow('Class', c.classLabel) +
@@ -172,7 +187,7 @@ export function printStudentIdCard(school: PrintSchool, c: StudentIdCardData): v
 export function printStaffIdCard(school: PrintSchool, c: StaffIdCardData): void {
   const body = idCardShell(
     school,
-    'Photo',
+    c.photoUrl,
     `<p class="pname">${esc(c.name)}</p>` +
       idRow('Employee ID', c.employeeId) +
       idRow('Designation', c.designation) +
@@ -188,15 +203,16 @@ export function printStaffIdCard(school: PrintSchool, c: StaffIdCardData): void 
 const CERT_CSS =
   BASE_CSS +
   `
-  .cert { max-width: 100%; page-break-inside: avoid; }
-  .lhead { text-align: center; border-bottom: 3px double #111; padding-bottom: 10px; margin-bottom: 8px; }
-  .lhead img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 4px; }
+  .cert { max-width: 100%; page-break-inside: avoid; border: 2px solid #1b2a4a; }
+  .lhead { text-align: center; background: linear-gradient(135deg, #1b2a4a 0%, #243b63 100%); color: #fff; padding: 18px 20px 14px; border-bottom: 3px solid #d4a017; margin-bottom: 8px; }
+  .lhead img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 4px; background: #fff; border-radius: 8px; padding: 4px; }
   .lhead h1 { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; margin: 0; letter-spacing: .02em; }
-  .lhead .smeta { font-size: 12px; color: #444; margin-top: 4px; }
+  .lhead .smeta { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 4px; }
+  .cbody-wrap { padding: 10px 24px 24px; }
   .ctitle {
     text-align: center; font-family: Georgia, 'Times New Roman', serif;
     font-size: 20px; letter-spacing: .18em; text-transform: uppercase;
-    margin: 26px 0 6px;
+    margin: 26px 0 6px; color: #1b2a4a;
   }
   .csub { text-align: center; font-size: 12px; color: #555; margin-bottom: 20px; }
   .meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 18px; }
@@ -235,6 +251,7 @@ export function printLeavingCertificate(school: PrintSchool, c: LeavingCertifica
   const body = `
   <div class="cert">
     ${certLetterhead(school)}
+    <div class="cbody-wrap">
     <div class="ctitle">School Leaving Certificate</div>
     <div class="csub">This is to certify the following</div>
     <div class="meta">
@@ -266,6 +283,7 @@ export function printLeavingCertificate(school: PrintSchool, c: LeavingCertifica
       Note: Conduct and reason-for-leaving fields are left blank for completion by the school office.
       Nothing is pre-filled beyond the student's official record.
     </div>
+    </div>
   </div>`;
   openPrintWindow(`Leaving Certificate — ${c.name}`, CERT_CSS, body);
 }
@@ -274,6 +292,7 @@ export function printCharacterCertificate(school: PrintSchool, c: CharacterCerti
   const body = `
   <div class="cert">
     ${certLetterhead(school)}
+    <div class="cbody-wrap">
     <div class="ctitle">Character Certificate</div>
     <div class="csub">This is to certify the following</div>
     <div class="meta">
@@ -304,6 +323,7 @@ export function printCharacterCertificate(school: PrintSchool, c: CharacterCerti
     <div class="note">
       Note: Character, conduct and remarks fields are left blank for completion by the school office.
       Nothing is pre-filled beyond the student's official record.
+    </div>
     </div>
   </div>`;
   openPrintWindow(`Character Certificate — ${c.name}`, CERT_CSS, body);

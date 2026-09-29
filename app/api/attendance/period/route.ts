@@ -31,6 +31,22 @@ export async function GET(req: Request) {
   });
   if (!section) return NextResponse.json({ error: 'Section not found' }, { status: 404 });
 
+  // Teachers may only access sections they're assigned to.
+  if (auth.user.role === 'TEACHER') {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: auth.user.id },
+      select: { id: true },
+    });
+    if (!teacher) return NextResponse.json({ error: 'Teacher record not found' }, { status: 403 });
+    const [slotCount, allocCount] = await Promise.all([
+      prisma.timetableSlot.count({ where: { teacherId: teacher.id, sectionId } }),
+      prisma.subjectAllocation.count({ where: { teacherId: teacher.id, gradeId: section.gradeId } }),
+    ]);
+    if (slotCount === 0 && allocCount === 0) {
+      return NextResponse.json({ error: 'You are not assigned to this section.' }, { status: 403 });
+    }
+  }
+
   const dow = dayOfWeekPKT(date);
   const [slots, students, rows] = await Promise.all([
     prisma.timetableSlot.findMany({
@@ -112,10 +128,27 @@ export async function POST(req: Request) {
 
   const slot = await prisma.timetableSlot.findUnique({
     where: { sectionId_dayOfWeek_periodNo: { sectionId, dayOfWeek: dayOfWeekPKT(date), periodNo } },
+    include: { section: { select: { gradeId: true } } },
   });
   if (!slot) return NextResponse.json({ error: `No timetable period ${periodNo} for this section on ${date}` }, { status: 400 });
   if (slot.subjectId !== subjectId) {
     return NextResponse.json({ error: 'subjectId does not match the timetable slot for this period' }, { status: 400 });
+  }
+
+  // Teachers may only submit for sections they're assigned to.
+  if (user.role === 'TEACHER') {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!teacher) return NextResponse.json({ error: 'Teacher record not found' }, { status: 403 });
+    const [slotCount, allocCount] = await Promise.all([
+      prisma.timetableSlot.count({ where: { teacherId: teacher.id, sectionId } }),
+      prisma.subjectAllocation.count({ where: { teacherId: teacher.id, gradeId: slot.section.gradeId } }),
+    ]);
+    if (slotCount === 0 && allocCount === 0) {
+      return NextResponse.json({ error: 'You are not assigned to this section.' }, { status: 403 });
+    }
   }
 
   const students = await prisma.student.findMany({

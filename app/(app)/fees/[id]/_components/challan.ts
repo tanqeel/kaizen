@@ -75,6 +75,7 @@ export function printFeeChallan(
       </div>
       <div class="clabel">${label}</div>
     </div>
+    <div class="cbody">
     <div class="cmeta">
       <div><span>Challan No</span><b>${esc(v.challanNo)}</b></div>
       <div><span>Fee Month</span><b>${esc(v.monthLabel)}</b></div>
@@ -100,6 +101,7 @@ export function printFeeChallan(
       <div class="stamp">Received by (school office)</div>
     </div>
     <div class="foot">Payable at the school office or designated bank before the due date. Please keep the student copy as proof of payment.</div>
+    </div>
   </div>`;
 
   const html = `<!doctype html>
@@ -107,18 +109,19 @@ export function printFeeChallan(
 <style>
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; padding: 16px; }
-  .copy { border: 2px solid #111; padding: 18px 22px; margin-bottom: 18px; page-break-inside: avoid; }
-  .chead { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 12px; }
-  h2 { font-size: 20px; margin: 0; }
-  .smeta { font-size: 12px; color: #444; margin-top: 2px; }
-  .clabel { font-size: 13px; font-weight: bold; text-transform: uppercase; border: 2px solid #111; padding: 4px 10px; white-space: nowrap; }
+  .copy { border: 2px solid #1b2a4a; padding: 0; margin-bottom: 18px; page-break-inside: avoid; overflow: hidden; }
+  .chead { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1b2a4a 0%, #243b63 100%); color: #fff; padding: 12px 22px; border-bottom: 3px solid #d4a017; }
+  h2 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+  .smeta { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 2px; }
+  .clabel { font-size: 13px; font-weight: bold; text-transform: uppercase; background: #d4a017; color: #1b2a4a; padding: 6px 12px; white-space: nowrap; border-radius: 4px; }
+  .cbody { padding: 18px 22px; }
   .cmeta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px; font-size: 13px; margin-bottom: 10px; }
   .cmeta span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #555; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 10px; }
   th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #bbb; }
-  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #444; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #1b2a4a; background: #f8f6f0; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  tfoot .total td { font-weight: bold; font-size: 15px; border-bottom: none; border-top: 2px solid #111; }
+  tfoot .total td { font-weight: bold; font-size: 15px; border-bottom: none; border-top: 2px solid #1b2a4a; }
   .words { font-size: 13px; font-weight: bold; border: 1px dashed #888; padding: 6px 10px; margin-bottom: 12px; }
   .stamps { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 18px 0 8px; }
   .stamp { border-top: 1px solid #111; padding-top: 4px; font-size: 11px; color: #444; height: 44px; }

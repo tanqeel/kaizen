@@ -21,7 +21,41 @@ export default async function AttendancePage({
 
   let sections: AttendanceSection[] = [];
   if (canPeriod) {
+    // Teachers see only sections they're assigned to (via timetable slots or subject allocations).
+    // Admins/principals see all sections.
+    let sectionFilter = {};
+    if (user.role === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      if (teacher) {
+        const [slots, allocations] = await Promise.all([
+          prisma.timetableSlot.findMany({
+            where: { teacherId: teacher.id },
+            select: { sectionId: true },
+            distinct: ['sectionId'],
+          }),
+          prisma.subjectAllocation.findMany({
+            where: { teacherId: teacher.id },
+            select: { gradeId: true },
+            distinct: ['gradeId'],
+          }),
+        ]);
+        const sectionIds = new Set(slots.map((s) => s.sectionId));
+        const gradeIds = allocations.map((a) => a.gradeId);
+        sectionFilter = {
+          OR: [
+            { id: { in: [...sectionIds] } },
+            { gradeId: { in: gradeIds } },
+          ],
+        };
+      } else {
+        sectionFilter = { id: 'none' }; // Teacher record not found; show nothing.
+      }
+    }
     const secs = await prisma.section.findMany({
+      where: sectionFilter,
       include: { grade: { select: { name: true } } },
       orderBy: [{ grade: { level: 'asc' } }, { name: 'asc' }],
     });

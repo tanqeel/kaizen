@@ -9,6 +9,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader
 import { Icon } from '@/components/icons';
 import DiscountsSection from './_components/discounts-section';
 import ProgressSection from './_components/progress-section';
+import { DischargeButton } from './_components/discharge-button';
 
 function gradeBand(pct: number): string {
   if (pct >= 90) return 'A+';
@@ -25,7 +26,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
 
   const student = await prisma.student.findFirst({
-    where: { id, isActive: true },
+    where: { id },
     include: {
       grade: { select: { name: true } },
       section: { select: { name: true } },
@@ -147,6 +148,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             >
               <Icon name="arrow-left" size={16} /> Back to directory
             </Link>
+            {can(user.role, 'students.manage') && (
+              <DischargeButton studentId={student.id} studentName={student.name} isActive={student.isActive} />
+            )}
           </>
         }
       />
@@ -156,7 +160,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           {/* Profile */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Profile
+                {!student.isActive && <Badge variant="absent">Discharged</Badge>}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="flex flex-col gap-2 text-sm">

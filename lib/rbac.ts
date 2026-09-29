@@ -34,6 +34,7 @@ export type Permission =
   | 'leave.manage'
   | 'staff.attendance.view'
   | 'staff.attendance.manage'
+  | 'my.attendance.view'
   | 'events.view'
   | 'events.manage'
   | 'liveclasses.view'
@@ -76,13 +77,14 @@ const MATRIX: Record<Permission, Role[]> = {
   'admissions.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
   'leave.view': ALL,
   'leave.manage': ['SUPER_ADMIN', 'PRINCIPAL'],
-  'staff.attendance.view': ALL,
+  'staff.attendance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
   'staff.attendance.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
+  'my.attendance.view': ['TEACHER', 'STAFF'],
   'events.view': ALL,
   'events.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
   'liveclasses.view': ALL,
   'liveclasses.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'],
-  'payroll.view': ALL,
+  'payroll.view': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF', 'TEACHER'],
   'payroll.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF'],
   'expenses.request': ['SUPER_ADMIN', 'PRINCIPAL', 'STAFF', 'TEACHER'],
   'expenses.approve': ['SUPER_ADMIN', 'PRINCIPAL'],
@@ -127,6 +129,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/admissions', label: 'Admissions', perm: 'admissions.view' },
   { href: '/leave', label: 'Leave', perm: 'leave.view' },
   { href: '/staff/attendance', label: 'Staff Attendance', perm: 'staff.attendance.view' },
+  { href: '/my-attendance', label: 'My Attendance', perm: 'my.attendance.view', hideFor: ['SUPER_ADMIN', 'PRINCIPAL'] },
   { href: '/events', label: 'Events', perm: 'events.view' },
   { href: '/live-classes', label: 'Live Classes', perm: 'liveclasses.view' },
   { href: '/payroll', label: 'Payroll', perm: 'payroll.view' },
