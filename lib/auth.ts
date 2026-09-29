@@ -34,12 +34,51 @@ async function loadSession(): Promise<{ user: SafeUser; isDemo: boolean } | null
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const st = await prisma.sessionToken.findUnique({
-    where: { token },
-    include: { user: true },
-  });
+  // Migration-resilient: if new identity columns don't exist yet, fall back
+  // to selecting only the pre-migration fields.
+  let st: { expiresAt: Date; isDemo: boolean; user: SafeUser } | null;
+  try {
+    const full = await prisma.sessionToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+    st = full && full.user ? { expiresAt: full.expiresAt, isDemo: full.isDemo, user: stripHash(full.user) } : null;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg.includes('kaizenId') || msg.includes('does not exist')) {
+      const fallback = await prisma.sessionToken.findUnique({
+        where: { token },
+        select: {
+          expiresAt: true,
+          isDemo: true,
+          user: {
+            select: {
+              id: true, name: true, email: true, role: true,
+              isActive: true, phone: true, createdAt: true,
+            },
+          },
+        },
+      });
+      if (!fallback?.user) {
+        st = null;
+      } else {
+        st = {
+          expiresAt: fallback.expiresAt,
+          isDemo: fallback.isDemo,
+          user: {
+            ...fallback.user,
+            kaizenId: null,
+            status: 'ACTIVE',
+            forcePasswordReset: false,
+          } as SafeUser,
+        };
+      }
+    } else {
+      throw e;
+    }
+  }
   if (!st || st.expiresAt < new Date() || !st.user.isActive) return null;
-  return { user: stripHash(st.user), isDemo: st.isDemo };
+  return { user: st.user, isDemo: st.isDemo };
 }
 
 /**
