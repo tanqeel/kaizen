@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { hashPassword } from '@/lib/password';
@@ -67,8 +66,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const kaizenId = await generateKaizenId(request.accountType);
-  // Random 32-byte hash — unusable as a password; replaced on activation.
-  const placeholderHash = hashPassword(randomBytes(32).toString('hex'));
+  // Random placeholder — unusable as a password; replaced on activation.
+  const placeholderBytes = crypto.getRandomValues(new Uint8Array(32));
+  const placeholderHex = Array.from(placeholderBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const placeholderHash = hashPassword(placeholderHex);
 
   const user = await prisma.user.create({
     data: {

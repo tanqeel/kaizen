@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'crypto';
 import { prisma } from './db';
 
 /**
@@ -17,8 +16,21 @@ import { prisma } from './db';
 const TOKEN_BYTES = 32;
 const EXPIRY_HOURS = 48;
 
-function hashToken(raw: string): string {
-  return createHash('sha256').update(raw).digest('hex');
+/** SHA-256 hex digest using Web Crypto (works in Node and Edge runtimes). */
+async function hashToken(raw: string): Promise<string> {
+  const data = new TextEncoder().encode(raw);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** Cryptographically secure random hex token. */
+function randomToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(TOKEN_BYTES));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export interface ActivationLink {
@@ -36,8 +48,8 @@ export async function createActivationToken(
   userId: string,
   purpose: 'ACTIVATION' | 'PASSWORD_RESET' = 'ACTIVATION',
 ): Promise<ActivationLink> {
-  const rawToken = randomBytes(TOKEN_BYTES).toString('hex');
-  const tokenHash = hashToken(rawToken);
+  const rawToken = randomToken();
+  const tokenHash = await hashToken(rawToken);
   const expiresAt = new Date(Date.now() + EXPIRY_HOURS * 60 * 60 * 1000);
 
   // Note: No $transaction — production uses Prisma HTTP mode which doesn't
@@ -63,7 +75,7 @@ export async function validateActivationToken(rawToken: string): Promise<{
   userId: string;
   purpose: string;
 } | null> {
-  const tokenHash = hashToken(rawToken);
+  const tokenHash = await hashToken(rawToken);
   const record = await prisma.activationToken.findUnique({
     where: { tokenHash },
     select: { userId: true, purpose: true, expiresAt: true, usedAt: true },
@@ -78,7 +90,7 @@ export async function validateActivationToken(rawToken: string): Promise<{
  * Marks a token as used. Call only after the password has been set.
  */
 export async function consumeActivationToken(rawToken: string): Promise<void> {
-  const tokenHash = hashToken(rawToken);
+  const tokenHash = await hashToken(rawToken);
   await prisma.activationToken.updateMany({
     where: { tokenHash, usedAt: null },
     data: { usedAt: new Date() },
