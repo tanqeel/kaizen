@@ -23,7 +23,6 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [resetPw, setResetPw] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState('');
 
   const load = useCallback(async () => {
@@ -68,23 +67,20 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
   };
 
   const resetPassword = async (id: string, name: string) => {
-    const pw = resetPw[id]?.trim() ?? '';
-    if (pw.length < 8) {
-      alert('Enter a temporary password of at least 8 characters first.');
-      return;
-    }
-    if (!confirm(`Reset password for ${name}? They must change it on next login.`)) return;
+    if (!confirm(`Issue a password reset link for ${name}? They will set their own private password — you will never see it.`)) return;
     setBusy(id);
     try {
       const res = await fetch(`/api/users/${id}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword: pw }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed.');
-      alert(`Password reset for ${name}.\nTemporary password: ${data.tempPassword}\n\nShare it securely. They must change it on next login.`);
-      setResetPw((p) => ({ ...p, [id]: '' }));
+      const link = `${window.location.origin}${data.activationPath}`;
+      // Copy to clipboard for easy sharing.
+      try { await navigator.clipboard.writeText(link); } catch { /* clipboard unavailable */ }
+      alert(`Reset link issued for ${name}.\n\n${link}\n\nLink copied to clipboard. Share it with the user — they set their own password. Valid 48 hours, single use.`);
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed.');
@@ -156,15 +152,8 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
-                      <Input
-                        type="text"
-                        placeholder="Temp password"
-                        value={resetPw[u.id] ?? ''}
-                        onChange={(e) => setResetPw((p) => ({ ...p, [u.id]: e.target.value }))}
-                        className="w-32 text-xs"
-                      />
                       <Button size="sm" variant="secondary" disabled={busy === u.id} onClick={() => resetPassword(u.id, u.name)}>
-                        Reset PW
+                        {busy === u.id ? 'Sending…' : 'Send reset link'}
                       </Button>
                     </div>
                   )}

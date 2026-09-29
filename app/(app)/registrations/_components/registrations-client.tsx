@@ -21,7 +21,6 @@ export function RegistrationsClient() {
   const [requests, setRequests] = useState<RegRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tempPasswords, setTempPasswords] = useState<Record<string, string>>({});
   const [deciding, setDeciding] = useState('');
 
   const load = useCallback(async () => {
@@ -43,19 +42,21 @@ export function RegistrationsClient() {
   }, [load]);
 
   const decide = async (id: string, decision: 'APPROVED' | 'REJECTED' | 'CORRECTION_REQUIRED') => {
+    if (decision === 'APPROVED' && !confirm('Approve this registration? The user will receive a KAIZEN ID and a one-time activation link to set their own password.')) return;
     setDeciding(id);
     setError('');
     try {
-      const tempPassword = tempPasswords[id] ?? '';
       const res = await fetch(`/api/registrations/${id}/decide`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, tempPassword: decision === 'APPROVED' ? tempPassword : undefined }),
+        body: JSON.stringify({ decision }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Decision failed.');
-      if (data.tempPassword) {
-        alert(`Approved!\nKAIZEN ID: ${data.kaizenId}\nTemporary password: ${data.tempPassword}\n\nShare these securely with the user. They must change the password on first login.`);
+      if (data.activationPath) {
+        const link = `${window.location.origin}${data.activationPath}`;
+        try { await navigator.clipboard.writeText(link); } catch { /* clipboard unavailable */ }
+        alert(`Approved!\nKAIZEN ID: ${data.kaizenId}\n\nActivation link (copied to clipboard):\n${link}\n\nShare it with the user — they set their own private password. Valid 48 hours, single use.`);
       }
       await load();
     } catch (e) {
@@ -101,15 +102,8 @@ export function RegistrationsClient() {
                   {r.notes && <div className="col-span-2"><dt className="text-xs text-slate-500">Notes</dt><dd>{r.notes}</dd></div>}
                 </dl>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Temp password (min 8 chars) — for approval"
-                    value={tempPasswords[r.id] ?? ''}
-                    onChange={(e) => setTempPasswords((p) => ({ ...p, [r.id]: e.target.value }))}
-                    className="max-w-xs"
-                  />
                   <Button size="sm" disabled={deciding === r.id} onClick={() => decide(r.id, 'APPROVED')}>
-                    Approve
+                    Approve & issue activation link
                   </Button>
                   <Button size="sm" variant="secondary" disabled={deciding === r.id} onClick={() => decide(r.id, 'CORRECTION_REQUIRED')}>
                     Request Correction
