@@ -1,6 +1,7 @@
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { prisma } from './db';
 import { todayPKT } from './format';
+import { currentFineAmount } from './fees';
 import { gradeBand, pctOf } from './exams';
 import type { PortalEventItem } from './portal-events';
 import type { PortalLiveClass } from './portal-live-classes';
@@ -88,6 +89,7 @@ export interface PortalSummary {
       monthLabel: string;
       totalAmount: number;
       paidAmount: number;
+      fineAmount: number;
       balance: number;
       status: string;
       overdue: boolean;
@@ -263,23 +265,9 @@ async function computePortalSummary(viewer: PortalViewer, studentId?: string): P
     };
   });
 
-  // ── fee snapshot (OVERDUE computed, never stored) ──
+  // ── fee snapshot (OVERDUE computed, never stored; fine accrues from policy) ──
+  // NOTE: voucherCards is computed after the feePolicy fetch below.
   const todayStart = new Date(`${today}T00:00:00+05:00`);
-  const voucherCards = vouchers.map((v) => {
-    const paidAmount = v.payments.reduce((sum, p) => sum + p.amount, 0);
-    const balance = v.totalAmount - v.discountAmount + v.fineAmount - paidAmount;
-    const overdue = v.dueDate < todayStart && v.status !== 'PAID';
-    return {
-      id: v.id,
-      monthLabel: `${MONTHS[v.month - 1] ?? ''} ${v.year}`,
-      totalAmount: v.totalAmount,
-      paidAmount,
-      balance: Math.max(0, balance),
-      status: overdue ? 'OVERDUE' : v.status,
-      overdue,
-    };
-  });
-  const totalOutstanding = voucherCards.filter((v) => v.status !== 'PAID').reduce((s, v) => s + v.balance, 0);
 
   // ── exam results summary: latest term with real results ──
   let exams: PortalSummary['exams'] = null;
@@ -352,7 +340,7 @@ async function computePortalSummary(viewer: PortalViewer, studentId?: string): P
         }
       : null;
 
-  const [diaryRows, noticeRows, scheduleRows, eventRows, liveClassRows] = await Promise.all([
+  const [diaryRows, noticeRows, scheduleRows, eventRows, liveClassRows, feePolicyRow] = await Promise.all([
     prisma.diaryEntry.findMany({
       where: { sectionId: student.sectionId, date: { gte: weekAgo } },
       include: {
@@ -397,7 +385,33 @@ async function computePortalSummary(viewer: PortalViewer, studentId?: string): P
           take: 3,
         })
       : Promise.resolve([]),
+    prisma.feePolicy.findFirst({
+      where: { schoolId },
+      select: { finePerDay: true, fineGraceDays: true },
+    }),
   ]);
+  const feePolicy = feePolicyRow;
+
+  // ── fee snapshot: fine accrues from policy so vouchers generated before
+  // their due date still show the correct fine once overdue. Stored fineAmount
+  // is the floor (never decreases).
+  const voucherCards = vouchers.map((v) => {
+    const paidAmount = v.payments.reduce((sum, p) => sum + p.amount, 0);
+    const fine = currentFineAmount(v, feePolicy, today);
+    const balance = v.totalAmount - v.discountAmount + fine - paidAmount;
+    const overdue = v.dueDate < todayStart && v.status !== 'PAID';
+    return {
+      id: v.id,
+      monthLabel: `${MONTHS[v.month - 1] ?? ''} ${v.year}`,
+      totalAmount: v.totalAmount,
+      paidAmount,
+      fineAmount: fine,
+      balance: Math.max(0, balance),
+      status: overdue ? 'OVERDUE' : v.status,
+      overdue,
+    };
+  });
+  const totalOutstanding = voucherCards.filter((v) => v.status !== 'PAID').reduce((s, v) => s + v.balance, 0);
   const events: PortalEventItem[] = eventRows.map((e) => ({
     id: e.id,
     title: e.title,

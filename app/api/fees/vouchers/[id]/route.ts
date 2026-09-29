@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
 import { childStudentIds } from '@/lib/parents';
-import { balanceDue, displayStatus, effectiveTotal, paidSum, type DisplayStatus } from '@/lib/fees';
+import { balanceDueWithPolicy, currentFineAmount, displayStatus, effectiveTotalWithPolicy, paidSum, type DisplayStatus, type FinePolicy } from '@/lib/fees';
 
 /** GET /api/fees/vouchers/[id] — voucher detail with lines + payments. */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -28,7 +28,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         orderBy: { feeHead: { name: 'asc' } },
       },
       payments: { orderBy: { paidAt: 'desc' } },
-      session: { select: { name: true, term: true } },
+      session: { select: { name: true, term: true, schoolId: true } },
     },
   });
   if (!voucher) return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
@@ -41,7 +41,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const paid = paidSum(voucher.payments);
-  const payable = effectiveTotal(voucher);
+  // Policy-accrued fine so a voucher generated before its due date still shows the correct fine once overdue.
+  const feePolicy: FinePolicy | null = await prisma.feePolicy.findFirst({
+    where: { schoolId: voucher.session.schoolId },
+    select: { finePerDay: true, fineGraceDays: true },
+  });
+  const fineAmount = currentFineAmount(voucher, feePolicy);
+  const payable = effectiveTotalWithPolicy(voucher, feePolicy);
   const ds: DisplayStatus = displayStatus(voucher);
 
   return NextResponse.json({
@@ -53,10 +59,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       issuedAt: voucher.issuedAt.toISOString(),
       totalAmount: voucher.totalAmount,
       discountAmount: voucher.discountAmount,
-      fineAmount: voucher.fineAmount,
+      fineAmount,
+      storedFineAmount: voucher.fineAmount,
       payable,
       paid,
-      balance: Math.max(0, balanceDue(voucher, voucher.payments)),
+      balance: Math.max(0, balanceDueWithPolicy(voucher, voucher.payments, feePolicy)),
       status: voucher.status,
       displayStatus: ds,
       student: voucher.student,

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
-import { balanceDue, effectiveTotal, paidSum } from '@/lib/fees';
+import { balanceDueWithPolicy, effectiveTotalWithPolicy, paidSum, type FinePolicy } from '@/lib/fees';
 import { pkr } from '@/lib/format';
 import { invalidateDashboard } from '@/lib/dashboard';
+import { invalidatePortal } from '@/lib/portal';
 import { PaymentMethod } from '@prisma/client';
 
 const METHODS = new Set(Object.values(PaymentMethod));
@@ -43,13 +44,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const voucher = await prisma.feeVoucher.findUnique({
     where: { id },
-    include: { payments: { select: { amount: true } } },
+    include: {
+      payments: { select: { amount: true } },
+      student: { select: { grade: { select: { schoolId: true } } } },
+    },
   });
   if (!voucher) return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
 
-  const payable = effectiveTotal(voucher);
+  // Policy-accrued fine: a voucher generated before its due date must still
+  // accrue the late fine once overdue. Stored fineAmount is the floor.
+  const feePolicy: FinePolicy | null = await prisma.feePolicy.findFirst({
+    where: { schoolId: voucher.student.grade.schoolId },
+    select: { finePerDay: true, fineGraceDays: true },
+  });
+  const payable = effectiveTotalWithPolicy(voucher, feePolicy);
   const paid = paidSum(voucher.payments);
-  const balance = Math.max(0, balanceDue(voucher, voucher.payments));
+  const balance = Math.max(0, balanceDueWithPolicy(voucher, voucher.payments, feePolicy));
   if (amount > balance) {
     return NextResponse.json(
       { error: `Amount ${pkr(amount)} exceeds the balance due of ${pkr(balance)}` },
@@ -74,6 +84,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const status = newPaid >= payable ? 'PAID' : 'PARTIAL';
   await prisma.feeVoucher.update({ where: { id: voucher.id }, data: { status } });
   invalidateDashboard();
+  invalidatePortal();
 
   return NextResponse.json({
     ok: true,

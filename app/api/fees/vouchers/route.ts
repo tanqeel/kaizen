@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUser } from '@/lib/api-auth';
-import { balanceDue, displayStatus, effectiveTotal, monthLabel, paidSum, type DisplayStatus } from '@/lib/fees';
+import { balanceDueWithPolicy, currentFineAmount, displayStatus, effectiveTotalWithPolicy, monthLabel, paidSum, type DisplayStatus, type FinePolicy } from '@/lib/fees';
 import { childStudentIds } from '@/lib/parents';
 import { todayPKT } from '@/lib/format';
 import type { VoucherStatus } from '@prisma/client';
@@ -52,6 +52,15 @@ export async function GET(req: Request) {
 
   const childIds = user.role === 'PARENT' ? await childStudentIds(user.id) : null;
 
+  // Single policy fetch for the whole list — fine accrues per voucher from it.
+  const school = await prisma.school.findFirst({ select: { id: true } });
+  const feePolicy: FinePolicy | null = school
+    ? await prisma.feePolicy.findFirst({
+        where: { schoolId: school.id },
+        select: { finePerDay: true, fineGraceDays: true },
+      })
+    : null;
+
   const vouchers = await prisma.feeVoucher.findMany({
     where: {
       month, year,
@@ -76,13 +85,14 @@ export async function GET(req: Request) {
 
   const rows: VoucherRow[] = vouchers.map((v) => {
     const paid = paidSum(v.payments);
-    const payable = effectiveTotal(v);
-    const balance = Math.max(0, balanceDue(v, v.payments));
+    const fineAmount = currentFineAmount(v, feePolicy);
+    const payable = effectiveTotalWithPolicy(v, feePolicy);
+    const balance = Math.max(0, balanceDueWithPolicy(v, v.payments, feePolicy));
     return {
       id: v.id,
       month: v.month, year: v.year,
       dueDate: v.dueDate.toISOString(),
-      totalAmount: v.totalAmount, discountAmount: v.discountAmount, fineAmount: v.fineAmount,
+      totalAmount: v.totalAmount, discountAmount: v.discountAmount, fineAmount,
       payable,
       status: v.status,
       paid, balance,

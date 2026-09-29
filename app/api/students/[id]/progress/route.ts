@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { childStudentIds } from '@/lib/parents';
 import { todayPKT } from '@/lib/format';
-import { balanceDue, effectiveTotal } from '@/lib/fees';
+import { balanceDueWithPolicy, effectiveTotalWithPolicy } from '@/lib/fees';
 
 export interface ProgressMonthAttendance {
   /** 'YYYY-MM' */
@@ -71,7 +71,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const student = await prisma.student.findFirst({
     where: { id, isActive: true },
-    select: { id: true, sectionId: true },
+    select: { id: true, sectionId: true, grade: { select: { schoolId: true } } },
   });
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
 
@@ -108,7 +108,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     prefixes.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
   }
 
-  const [attRows, results, vouchers] = await Promise.all([
+  const [attRows, results, vouchers, feePolicy] = await Promise.all([
     prisma.periodAttendance.findMany({
       where: { studentId: id, OR: prefixes.map((p) => ({ date: { startsWith: p } })) },
       select: { date: true, status: true },
@@ -131,8 +131,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         totalAmount: true,
         discountAmount: true,
         fineAmount: true,
+        dueDate: true,
         payments: { select: { amount: true } },
       },
+    }),
+    prisma.feePolicy.findFirst({
+      where: { schoolId: student.grade.schoolId },
+      select: { finePerDay: true, fineGraceDays: true },
     }),
   ]);
 
@@ -175,10 +180,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return { termId, termName: t.termName, pct, grade: pct === null ? null : gradeBand(pct) };
     });
 
-  const billed = vouchers.reduce((s, v) => s + effectiveTotal(v), 0);
+  const billed = vouchers.reduce((s, v) => s + effectiveTotalWithPolicy(v, feePolicy), 0);
   const paid = vouchers.reduce((s, v) => s + v.payments.reduce((p, x) => p + x.amount, 0), 0);
   const outstanding = vouchers.reduce(
-    (s, v) => s + Math.max(0, balanceDue(v, v.payments)),
+    (s, v) => s + Math.max(0, balanceDueWithPolicy(v, v.payments, feePolicy)),
     0,
   );
 

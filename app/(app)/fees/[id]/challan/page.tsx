@@ -6,7 +6,8 @@ import { prisma } from '@/lib/db';
 import { childStudentIds } from '@/lib/parents';
 import { pkr, pktDate } from '@/lib/format';
 import {
-  balanceDue, effectiveTotal, monthLabel, paidSum,
+  balanceDueWithPolicy, currentFineAmount, effectiveTotalWithPolicy, monthLabel, paidSum,
+  type FinePolicy,
 } from '@/lib/fees';
 import { PageHeader } from '@/components/ui';
 import { Icon } from '@/components/icons';
@@ -34,9 +35,16 @@ export default async function ChallanPage({ params }: { params: Promise<{ id: st
   }
 
   const school = await prisma.school.findFirst();
+  // Policy-accrued fine so the printed challan shows the true amount owed.
+  const feePolicy: FinePolicy | null = school
+    ? await prisma.feePolicy.findFirst({
+        where: { schoolId: school.id },
+        select: { finePerDay: true, fineGraceDays: true },
+      })
+    : null;
   const paid = paidSum(v.payments);
-  const payable = effectiveTotal(v);
-  const balance = Math.max(0, balanceDue(v, v.payments));
+  const payable = effectiveTotalWithPolicy(v, feePolicy);
+  const balance = Math.max(0, balanceDueWithPolicy(v, v.payments, feePolicy));
 
   return (
     <div>
@@ -60,7 +68,7 @@ export default async function ChallanPage({ params }: { params: Promise<{ id: st
           dueDate: pktDate(v.dueDate),
           totalAmount: v.totalAmount,
           discountAmount: v.discountAmount,
-          fineAmount: v.fineAmount,
+          fineAmount: currentFineAmount(v, feePolicy),
           payable,
           paid,
           balance,

@@ -6,7 +6,8 @@ import { prisma } from '@/lib/db';
 import { childStudentIds } from '@/lib/parents';
 import { pkr, pktDate } from '@/lib/format';
 import {
-  balanceDue, displayStatus, effectiveTotal, monthLabel, paidSum, statusBadgeVariant,
+  balanceDueWithPolicy, displayStatus, effectiveTotalWithPolicy, monthLabel, paidSum, statusBadgeVariant,
+  type FinePolicy,
 } from '@/lib/fees';
 import {
   Badge, Card, CardContent, CardHeader, CardTitle, EmptyState,
@@ -51,10 +52,17 @@ export default async function VoucherDetailPage({ params }: { params: Promise<{ 
     if (!ids.includes(v.studentId)) forbidden();
   }
 
-  const school = await prisma.school.findFirst({ select: { name: true } });
+  const school = await prisma.school.findFirst({ select: { name: true, id: true } });
+  // Policy-accrued fine: vouchers generated before their due date still accrue correctly once overdue.
+  const feePolicy: FinePolicy | null = school
+    ? await prisma.feePolicy.findFirst({
+        where: { schoolId: school.id },
+        select: { finePerDay: true, fineGraceDays: true },
+      })
+    : null;
   const paid = paidSum(v.payments);
-  const payable = effectiveTotal(v);
-  const balance = Math.max(0, balanceDue(v, v.payments));
+  const payable = effectiveTotalWithPolicy(v, feePolicy);
+  const balance = Math.max(0, balanceDueWithPolicy(v, v.payments, feePolicy));
   const ds = displayStatus(v);
   const classLabel = `${v.student.grade.name} · Section ${v.student.section.name}`;
 

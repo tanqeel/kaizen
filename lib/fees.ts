@@ -60,6 +60,63 @@ export function effectiveTotal(v: { totalAmount: number; discountAmount: number;
   return v.totalAmount + v.fineAmount - v.discountAmount;
 }
 
+/** Whole calendar days between two YYYY-MM-DD dates (a - b). */
+export function daysBetween(a: string, b: string): number {
+  const ms = Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
+export interface FinePolicy {
+  finePerDay: number;
+  fineGraceDays: number;
+}
+
+/**
+ * The fine actually owed on a voucher as of today.
+ *
+ * The stored fineAmount is a historical floor — it never decreases (a voucher
+ * generated while already overdue keeps its fine even if the policy later
+ * changes). But a voucher generated BEFORE its due date stores 0, so we
+ * accrue the policy-based fine as it ages past the grace window:
+ *   max(stored, max(0, daysOverdue - graceDays) × finePerDay)
+ *
+ * This is computed, never invented: it applies the school's own FeePolicy to
+ * the voucher's real due date. Matches the "OVERDUE is computed, never stored"
+ * philosophy above.
+ */
+export function currentFineAmount(
+  v: { dueDate: Date; fineAmount: number },
+  policy: FinePolicy | null | undefined,
+  todayStr: string = todayPKT(),
+): number {
+  if (!policy || policy.finePerDay <= 0) return v.fineAmount;
+  const daysOverdue = Math.max(0, daysBetween(todayStr, todayPKT(v.dueDate)) - policy.fineGraceDays);
+  return Math.max(v.fineAmount, daysOverdue * policy.finePerDay);
+}
+
+/**
+ * Total owed with the policy-accrued fine. Pass the school's FeePolicy when
+ * accuracy matters (voucher detail, payment, challan, portal); without it,
+ * falls back to the stored fineAmount.
+ */
+export function effectiveTotalWithPolicy(
+  v: { totalAmount: number; discountAmount: number; fineAmount: number; dueDate: Date },
+  policy: FinePolicy | null | undefined,
+  todayStr: string = todayPKT(),
+): number {
+  return v.totalAmount + currentFineAmount(v, policy, todayStr) - v.discountAmount;
+}
+
+/** Balance due with the policy-accrued fine. */
+export function balanceDueWithPolicy(
+  v: { totalAmount: number; discountAmount: number; fineAmount: number; dueDate: Date },
+  payments: Array<{ amount: number }>,
+  policy: FinePolicy | null | undefined,
+  todayStr: string = todayPKT(),
+): number {
+  return effectiveTotalWithPolicy(v, policy, todayStr) - paidSum(payments);
+}
+
 export function paidSum(payments: Array<{ amount: number }>): number {
   return payments.reduce((s, p) => s + p.amount, 0);
 }
