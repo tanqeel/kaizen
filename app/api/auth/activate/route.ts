@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import {
   validateActivationToken,
-  consumeActivationToken,
+  hashToken,
 } from '@/lib/activation';
 
 /**
@@ -54,19 +54,26 @@ async function activatePost(req: Request) {
     );
   }
 
-  // Set password, activate account, consume token — sequentially
-  // (no $transaction: Prisma HTTP mode doesn't support it).
-  await prisma.user.update({
-    where: { id: valid.userId },
-    data: {
-      passwordHash: hashPassword(password),
-      status: 'ACTIVE',
-      isActive: true,
-      forcePasswordReset: false,
-    },
-  });
-  // Mark the specific token as used (single operation, no transaction needed).
-  await consumeActivationToken(token);
+  // Set password, activate account, consume token.
+  // Uses raw SQL to avoid Prisma HTTP-mode transaction limitations.
+  const tokenHash = await hashToken(token);
+  const passwordHash = hashPassword(password);
+  const now = new Date();
+
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET "passwordHash" = ${passwordHash},
+        "status" = 'ACTIVE',
+        "isActive" = true,
+        "forcePasswordReset" = false,
+        "updatedAt" = ${now}
+    WHERE id = ${valid.userId}
+  `;
+  await prisma.$executeRaw`
+    UPDATE "ActivationToken"
+    SET "usedAt" = ${now}
+    WHERE "tokenHash" = ${tokenHash} AND "usedAt" IS NULL
+  `;
 
   return NextResponse.json({ ok: true });
 }

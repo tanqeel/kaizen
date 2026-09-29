@@ -17,7 +17,7 @@ const TOKEN_BYTES = 32;
 const EXPIRY_HOURS = 48;
 
 /** SHA-256 hex digest using Web Crypto (works in Node and Edge runtimes). */
-async function hashToken(raw: string): Promise<string> {
+export async function hashToken(raw: string): Promise<string> {
   const data = new TextEncoder().encode(raw);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(digest))
