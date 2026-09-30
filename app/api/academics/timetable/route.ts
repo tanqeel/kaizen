@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { academicScope } from '@/lib/academic-scope';
 import { checkSlot, type SlotInput } from './slot-checks';
 
 /** GET /api/academics/timetable?sectionId= — slots for one section. */
@@ -10,6 +11,12 @@ export async function GET(req: Request) {
 
   const sectionId = new URL(req.url).searchParams.get('sectionId');
   if (!sectionId) return NextResponse.json({ error: 'sectionId is required' }, { status: 400 });
+
+  // Students/parents may only view timetables for their own section(s).
+  const scope = await academicScope(auth.id, auth.role);
+  if (scope && !scope.sectionIds.includes(sectionId)) {
+    return NextResponse.json({ error: 'You can only view your own section timetable.' }, { status: 403 });
+  }
 
   const section = await prisma.section.findUnique({
     where: { id: sectionId },
