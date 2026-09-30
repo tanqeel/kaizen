@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { can } from '@/lib/rbac';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 export interface PayslipRow {
   id: string;
@@ -188,7 +189,9 @@ export async function POST(req: Request) {
     })),
   ];
   if (rows.length > 0) {
-    await prisma.payslip.createMany({ data: rows });
+    // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+    // mode" on the Neon HTTP driver — insert individually in chunks instead.
+    await createManyCompat((data) => prisma.payslip.create({ data }), rows);
   }
 
   const skipped = hasTeacher.size + hasStaff.size;
