@@ -18,6 +18,16 @@ interface UserRow {
 
 const STATUSES = ['ACTIVE', 'SUSPENDED', 'LOCKED', 'DEACTIVATED', 'GRADUATED', 'TRANSFERRED'];
 
+interface ResetRequest {
+  userId: string;
+  name: string;
+  email: string;
+  kaizenId: string | null;
+  role: string;
+  requestedAt: string;
+  expiresAt: string;
+}
+
 export function UsersClient({ canManage }: { canManage: boolean }) {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +35,17 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [busy, setBusy] = useState('');
+  const [resetRequests, setResetRequests] = useState<ResetRequest[]>([]);
+
+  const loadResetRequests = useCallback(async () => {
+    try {
+      const res = await fetch('/api/users/reset-requests');
+      const data = await safeJson(res);
+      if (res.ok) setResetRequests(data.requests ?? []);
+    } catch {
+      /* non-blocking */
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +68,10 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => {
+    void loadResetRequests();
+  }, [loadResetRequests]);
 
   const setStatus = async (id: string, status: string) => {
     if (!confirm(`Change account status to ${status}?`)) return;
@@ -83,6 +108,7 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
       try { await navigator.clipboard.writeText(link); } catch { /* clipboard unavailable */ }
       alert(`Reset link issued for ${name}.\n\n${link}\n\nLink copied to clipboard. Share it with the user — they set their own password. Valid 48 hours, single use.`);
       await load();
+      await loadResetRequests();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed.');
     } finally {
@@ -101,6 +127,41 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
 
   return (
     <div>
+      {resetRequests.length > 0 && canManage && (
+        <Card className="mb-5 border-amber-300 dark:border-amber-500/40">
+          <CardHeader>
+            <CardTitle>Password reset requests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              These people asked for a password reset via “Forgot password?”. Issue each a one-time
+              link and share it with them — they set their own private password.
+            </p>
+            {resetRequests.map((r) => (
+              <div
+                key={r.userId}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-700"
+              >
+                <div>
+                  <p className="text-sm font-semibold">{r.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {r.kaizenId ?? 'No KAIZEN ID'} · {r.email} · requested{' '}
+                    {new Date(r.requestedAt).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={busy === r.userId}
+                  onClick={() => resetPassword(r.userId, r.name)}
+                >
+                  Issue &amp; copy link
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       <div className="mb-4 flex flex-wrap gap-2">
         <Input
           placeholder="Search name, email, KAIZEN ID…"
