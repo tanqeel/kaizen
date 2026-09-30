@@ -81,19 +81,33 @@ export async function POST(req: Request) {
     },
   });
 
-  const recipients = await resolveRecipients(audience, body.gradeId ?? null);
-  if (recipients.length > 0) {
-    await prisma.notificationLog.createMany({
-      data: recipients.map((r) => ({
-        userId: r.userId,
-        studentId: r.studentId,
-        type: 'ANNOUNCEMENT' as const,
-        channel: 'IN_APP' as const,
-        message: announcement.title,
-        status: 'SENT' as const,
-      })),
-    });
+  // Notification fan-out is best-effort: the notice itself is already saved
+  // above, so a fan-out failure must not 500 the request (that previously
+  // left the notice created but reported failure, causing duplicates on retry).
+  let notified = 0;
+  let notifyError: string | null = null;
+  try {
+    const recipients = await resolveRecipients(audience, body.gradeId ?? null);
+    if (recipients.length > 0) {
+      await prisma.notificationLog.createMany({
+        data: recipients.map((r) => ({
+          userId: r.userId,
+          studentId: r.studentId,
+          type: 'ANNOUNCEMENT' as const,
+          channel: 'IN_APP' as const,
+          message: announcement.title,
+          status: 'SENT' as const,
+        })),
+      });
+      notified = recipients.length;
+    }
+  } catch (e) {
+    notifyError = e instanceof Error ? `${e.name}: ${e.message}` : 'fan-out failed';
+    console.error('[announcements] notification fan-out failed:', notifyError);
   }
 
-  return NextResponse.json({ ok: true, id: announcement.id, notified: recipients.length }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, id: announcement.id, notified, ...(notifyError ? { notifyError } : {}) },
+    { status: 201 },
+  );
 }
