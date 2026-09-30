@@ -50,3 +50,13 @@ One shared component: `components/print/DocumentShell.tsx` — navy (#1b2a5e) + 
 - Dates: PKT, YYYY-MM-DD for date-only.
 - npx tsc --noEmit after TS changes.
 - No "done" claim until D1–D7 pass.
+
+## 2026-09-30 — Production fix log (Neon HTTP compatibility)
+
+- Notice creation returned HTTP 500 (`Transactions are not supported in HTTP mode`): Prisma
+  `createMany()` is incompatible with the Neon HTTP adapter.
+- Fix: `lib/prisma-batch.ts` adds `createManyCompat()` (chunked individual `create()` calls);
+  applied at 7 call sites (announcements, forgot-password, biometric simulate, payroll,
+  timetable copy, AI chat, attendance lib). Announcement fan-out is now best-effort so a saved
+  notice never falsely reports total failure.
+- Commit `6639528e` (main). Rebuild retriggered after Vercel missed the push event.
