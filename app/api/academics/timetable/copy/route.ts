@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 /**
  * POST /api/academics/timetable/copy { fromSectionId, toSectionId }
@@ -41,8 +42,11 @@ export async function POST(req: Request) {
   }
 
   const replaced = await prisma.timetableSlot.deleteMany({ where: { sectionId: toSectionId } });
-  await prisma.timetableSlot.createMany({
-    data: sourceSlots.map((s) => ({
+  // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+  // mode" on the Neon HTTP driver — insert individually in chunks instead.
+  await createManyCompat(
+    (data) => prisma.timetableSlot.create({ data }),
+    sourceSlots.map((s) => ({
       sectionId: toSectionId,
       dayOfWeek: s.dayOfWeek,
       periodNo: s.periodNo,
@@ -52,7 +56,7 @@ export async function POST(req: Request) {
       startTime: s.startTime,
       endTime: s.endTime,
     })),
-  });
+  );
 
   return NextResponse.json({
     ok: true,
