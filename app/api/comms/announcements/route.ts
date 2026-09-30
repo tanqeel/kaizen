@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { ANNOUNCEMENT_AUDIENCES, resolveRecipients } from '@/lib/comms';
+import { createManyCompat } from '@/lib/prisma-batch';
 import type { AnnouncementAudience, AnnouncementPriority } from '@prisma/client';
 
 const PRIORITIES: AnnouncementPriority[] = ['NORMAL', 'URGENT'];
@@ -89,8 +90,11 @@ export async function POST(req: Request) {
   try {
     const recipients = await resolveRecipients(audience, body.gradeId ?? null);
     if (recipients.length > 0) {
-      await prisma.notificationLog.createMany({
-        data: recipients.map((r) => ({
+      // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+      // mode" on the Neon HTTP driver — insert individually in chunks instead.
+      notified = await createManyCompat(
+        (data) => prisma.notificationLog.create({ data }),
+        recipients.map((r) => ({
           userId: r.userId,
           studentId: r.studentId,
           type: 'ANNOUNCEMENT' as const,
@@ -98,8 +102,7 @@ export async function POST(req: Request) {
           message: announcement.title,
           status: 'SENT' as const,
         })),
-      });
-      notified = recipients.length;
+      );
     }
   } catch (e) {
     notifyError = e instanceof Error ? `${e.name}: ${e.message}` : 'fan-out failed';
