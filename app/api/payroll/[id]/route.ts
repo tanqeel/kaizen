@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUserStrict as apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 
 const STATUSES = ['DRAFT', 'GENERATED', 'PAID'] as const;
 type PayslipStatus = (typeof STATUSES)[number];
@@ -19,7 +19,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const slip = await prisma.payslip.findUnique({ where: { id } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const slip = await prisma.payslip.findFirst({ where: { id, schoolId: sres.schoolId } });
   if (!slip) return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
 
   let body: { allowances?: unknown; deductions?: unknown; status?: unknown };
@@ -80,7 +82,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const slip = await prisma.payslip.findUnique({ where: { id }, select: { status: true } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const slip = await prisma.payslip.findFirst({
+    where: { id, schoolId: sres.schoolId },
+    select: { status: true },
+  });
   if (!slip) return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
   if (slip.status === 'PAID') {
     return NextResponse.json({ error: 'Paid payslips cannot be deleted' }, { status: 409 });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { hashPassword } from '@/lib/password';
 import { generateKaizenId } from '@/lib/kaizen-id';
 import { auditLog } from '@/lib/audit';
@@ -31,7 +31,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Invalid decision.' }, { status: 400 });
   }
 
-  const request = await prisma.registrationRequest.findUnique({ where: { id } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const request = await prisma.registrationRequest.findFirst({
+    where: { id, schoolId: sres.schoolId },
+  });
   if (!request) return NextResponse.json({ error: 'Request not found.' }, { status: 404 });
   if (request.status !== 'PENDING' && request.status !== 'CORRECTION_REQUIRED') {
     return NextResponse.json({ error: 'Request has already been decided.' }, { status: 409 });

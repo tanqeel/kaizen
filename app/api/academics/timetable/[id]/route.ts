@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { schoolIdOr400 } from '@/lib/api-auth';
 import { checkSlot } from '../slot-checks';
 
 /**
@@ -12,7 +13,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  const existing = await prisma.timetableSlot.findUnique({ where: { id } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const existing = await prisma.timetableSlot.findFirst({
+    where: { id, section: { grade: { schoolId: sres.schoolId } } },
+  });
   if (!existing) return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
 
   let body: Record<string, unknown>;
@@ -47,7 +52,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  const existing = await prisma.timetableSlot.findUnique({ where: { id } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const existing = await prisma.timetableSlot.findFirst({
+    where: { id, section: { grade: { schoolId: sres.schoolId } } },
+  });
   if (!existing) return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
 
   await prisma.timetableSlot.delete({ where: { id } });

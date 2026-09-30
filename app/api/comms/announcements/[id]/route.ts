@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUserStrict as apiUser } from '@/lib/api-auth';
+import { apiUserStrict as apiUser, schoolIdOr400 } from '@/lib/api-auth';
 
 /** DELETE /api/comms/announcements/[id] — removes an announcement. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,7 +8,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const announcement = await prisma.announcement.findUnique({ where: { id }, select: { id: true } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const announcement = await prisma.announcement.findFirst({
+    where: { id, schoolId: sres.schoolId },
+    select: { id: true },
+  });
   if (!announcement) return NextResponse.json({ error: 'Announcement not found' }, { status: 404 });
 
   await prisma.announcement.delete({ where: { id } });
@@ -24,7 +29,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const announcement = await prisma.announcement.findUnique({ where: { id }, select: { id: true } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const announcement = await prisma.announcement.findFirst({
+    where: { id, schoolId: sres.schoolId },
+    select: { id: true },
+  });
   if (!announcement) return NextResponse.json({ error: 'Announcement not found' }, { status: 404 });
 
   let body: { title?: string; body?: string; priority?: string };

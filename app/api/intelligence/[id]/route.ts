@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { apiUser } from '@/lib/api-auth';
+import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { auditLog } from '@/lib/audit';
 
 /**
@@ -39,7 +39,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid decision.' }, { status: 400 });
   }
 
-  const insight = await prisma.intelligenceInsight.findUnique({ where: { id } });
+  const sres = await schoolIdOr400();
+  if ('error' in sres) return sres.error;
+  const insight = await prisma.intelligenceInsight.findFirst({
+    where: { id, schoolId: sres.schoolId },
+  });
   if (!insight) return NextResponse.json({ error: 'Insight not found.' }, { status: 404 });
 
   const reviewerNotes = String(body.reviewerNotes ?? body.note ?? '').trim() || null;
