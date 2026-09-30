@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { academicScope } from '@/lib/academic-scope';
 
 /** GET /api/academics/sections — grades with their sections (teacher, counts). */
 export async function GET() {
   const auth = await requireApiPermission('academics.view');
   if (auth instanceof NextResponse) return auth;
 
+  // Students see only their own grade/section; parents only their children's.
+  const scope = await academicScope(auth.id, auth.role);
+
   const grades = await prisma.grade.findMany({
+    where: scope ? { id: { in: scope.gradeIds } } : {},
     include: {
       sections: {
+        where: scope ? { id: { in: scope.sectionIds } } : {},
         include: {
           classTeacher: { include: { user: true } },
           _count: { select: { students: true, timetableSlots: true, periodAttendance: true } },
