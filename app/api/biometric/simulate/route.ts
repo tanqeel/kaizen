@@ -3,6 +3,7 @@ import { CheckInMethod } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { apiUser, schoolIdOr400 } from '@/lib/api-auth';
 import { todayPKT, pktTime } from '@/lib/format';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 const METHODS = ['FINGERPRINT', 'FACE', 'RFID'] as const;
 const METHOD_LABELS: Record<CheckInMethod, string> = {
@@ -85,8 +86,11 @@ export async function POST(req: Request) {
   // ARRIVAL notification to every linked parent account (IN_APP, SENT).
   const parentUserIds = [...new Set(student.parents.map((p) => p.parent.userId).filter(Boolean))] as string[];
   if (parentUserIds.length > 0) {
-    await prisma.notificationLog.createMany({
-      data: parentUserIds.map((userId) => ({
+    // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+    // mode" on the Neon HTTP driver — insert individually in chunks instead.
+    await createManyCompat(
+      (data) => prisma.notificationLog.create({ data }),
+      parentUserIds.map((userId) => ({
         userId,
         studentId: student.id,
         type: 'ARRIVAL' as const,
@@ -94,7 +98,7 @@ export async function POST(req: Request) {
         message: `${student.name} checked in at ${pktTime(checkInTime)} via ${METHOD_LABELS[method]} (simulated scan).`,
         status: 'SENT' as const,
       })),
-    });
+    );
   }
 
   return NextResponse.json({
