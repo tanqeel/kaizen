@@ -76,7 +76,7 @@ export function StudentDirectoryClient({
   return (
     <Card>
       <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Input
             label="Search"
             placeholder="Name or admission no…"
@@ -101,22 +101,22 @@ export function StudentDirectoryClient({
             options={visibleSections.map((s) => ({ value: s.id, label: `Section ${s.name}` }))}
             placeholder="All sections"
           />
-          <div className="flex items-end justify-between gap-3">
-            <p className="tnum pb-3 text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
-              {loading ? 'Loading…' : `${rows.length} student${rows.length === 1 ? '' : 's'}`}
-            </p>
-            {canManage && (
-              <div className="flex items-end gap-2 pb-0.5">
-                <AddStudentDialog
-                  grades={grades}
-                  shifts={shifts}
-                  sessions={sessions}
-                  onDone={() => fetchRows({ q, gradeId, sectionId })}
-                />
-                <StudentImportCsv onDone={() => fetchRows({ q, gradeId, sectionId })} />
-              </div>
-            )}
-          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="tnum text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
+            {loading ? 'Loading…' : `${rows.length} student${rows.length === 1 ? '' : 's'}`}
+          </p>
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
+              <AddStudentDialog
+                grades={grades}
+                shifts={shifts}
+                sessions={sessions}
+                onDone={() => fetchRows({ q, gradeId, sectionId })}
+              />
+              <StudentImportCsv onDone={() => fetchRows({ q, gradeId, sectionId })} />
+            </div>
+          )}
         </div>
 
         {error && (
