@@ -10,6 +10,7 @@ import {
   generalGuidance,
 } from '@/lib/ai/engine';
 import { buildSystemPrompt, generateText, providerShortLabel, type AiProviderId } from '@/lib/ai/providers';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 /** 401/403 guard for API routes. Returns the user or a JSON error response. */
 async function guard(perm: Permission): Promise<{ user: SafeUser } | NextResponse> {
@@ -120,13 +121,16 @@ async function chatPost(req: Request) {
   }
 
   // Persist messages + usage log. Best-effort: logging must never break the reply.
+  // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+  // mode" on the Neon HTTP driver — insert individually in chunks instead.
   try {
-    await prisma.aiMessage.createMany({
-      data: [
+    await createManyCompat(
+      (data) => prisma.aiMessage.create({ data }),
+      [
         { conversationId, role: 'USER', content: message, toolsUsed: intent },
         { conversationId, role: 'ASSISTANT', content: reply, toolsUsed: intent },
       ],
-    });
+    );
     const latencyMs = Date.now() - started;
     await prisma.aiUsageLog.create({
       data: {
