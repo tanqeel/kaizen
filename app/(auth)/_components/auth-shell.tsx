@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Icon } from '@/components/icons';
+import { Reveal } from '@/components/reveal';
 
 /**
  * Shared two-panel auth layout (brand panel + form panel).
@@ -19,6 +20,15 @@ export function AuthShell({
     <main className="flex min-h-dvh bg-white dark:bg-slate-950">
       {/* Brand panel */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 p-10 text-white lg:flex">
+        {/* Ambient 3D depth: slow-drifting light orbs behind the content */}
+        <div
+          aria-hidden="true"
+          className="animate-float-slow pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="animate-float-slower pointer-events-none absolute -right-32 -bottom-32 h-[28rem] w-[28rem] rounded-full bg-indigo-300/20 blur-3xl"
+        />
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-20"
@@ -36,7 +46,7 @@ export function AuthShell({
             <span className="block text-xs text-white/70">School Management System</span>
           </span>
         </div>
-        <div className="relative">
+        <Reveal className="relative">
           <h1 className="text-3xl leading-tight font-bold">
             One system for the whole school day.
           </h1>
@@ -49,20 +59,20 @@ export function AuthShell({
               'Dual-tier attendance: biometric gate + per-period register',
               'Parent portal with live at-school status',
               'Fee vouchers, payments & expense tracking in PKR',
-            ].map((point) => (
-              <li key={point} className="flex items-start gap-2.5 text-white/85">
+            ].map((point, i) => (
+              <Reveal as="li" key={point} delay={120 + i * 110} className="flex items-start gap-2.5 text-white/85">
                 <Icon name="check" size={18} className="mt-0.5 shrink-0 text-emerald-300" />
                 {point}
-              </li>
+              </Reveal>
             ))}
           </ul>
-        </div>
+        </Reveal>
         <p className="relative text-xs text-white/60">Kaizen Model School · Asia/Karachi</p>
       </div>
 
       {/* Form panel */}
       <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
-        <div className="w-full max-w-md">
+        <div className="animate-fade-up w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white">
               <Icon name="school" size={26} />

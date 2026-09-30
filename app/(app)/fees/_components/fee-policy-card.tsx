@@ -93,7 +93,7 @@ export default function FeePolicyCard({ canManage }: { canManage: boolean }) {
         ) : !policy ? (
           <p className="text-sm text-slate-500">Could not load the fine policy.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
             <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
               <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Grace days</p>
               <p className="tnum mt-1 text-2xl font-bold text-slate-900 dark:text-white">{policy.fineGraceDays}</p>

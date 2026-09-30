@@ -116,7 +116,7 @@ export default async function TimetablePage({
             : 'No sections available for your account.'
         }
         actions={
-          <div className="no-print flex items-center gap-2">
+          <div className="no-print flex flex-wrap items-center gap-2">
             {can(user.role, 'academics.manage') && (
               <Link
                 href="/academics"

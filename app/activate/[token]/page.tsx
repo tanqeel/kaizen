@@ -66,8 +66,8 @@ export default function ActivatePage({ params }: { params: Promise<{ token: stri
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <div className="animate-scale-in w-full max-w-md bg-white rounded-2xl shadow-[var(--shadow-pop)] p-8 dark:bg-slate-900 dark:border dark:border-slate-800">
         <h1 className="text-2xl font-bold text-slate-900">Activate your KAIZEN account</h1>
 
         {state === 'checking' && (
@@ -127,7 +127,7 @@ export default function ActivatePage({ params }: { params: Promise<{ token: stri
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-lg bg-lime-500 px-4 py-2.5 font-semibold text-slate-900 hover:bg-lime-400 disabled:opacity-50"
+              className="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
               {busy ? 'Activating…' : 'Activate my account'}
             </button>
@@ -139,7 +139,7 @@ export default function ActivatePage({ params }: { params: Promise<{ token: stri
             <p className="text-green-700 font-medium">Your account is activated.</p>
             <button
               onClick={() => router.push('/login')}
-              className="mt-4 w-full rounded-lg bg-lime-500 px-4 py-2.5 font-semibold text-slate-900 hover:bg-lime-400"
+              className="mt-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 font-semibold text-white hover:bg-brand-700"
             >
               Go to sign in
             </button>

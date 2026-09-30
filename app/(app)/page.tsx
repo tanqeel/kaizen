@@ -5,6 +5,7 @@ import { requirePagePermission } from '@/lib/rbac';
 import { getDashboardSummary, type DashboardSummary } from '@/lib/dashboard';
 import { pkr, todayPKT } from '@/lib/format';
 import { Badge, Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader, Stat } from '@/components/ui';
+import { Reveal } from '@/components/reveal';
 import { Icon } from '@/components/icons';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -45,15 +46,15 @@ function AdminDashboard({ data }: { data: DashboardSummary }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Stat label="Enrolled students" value={String(k.students)} icon="users" tone="info" />
-        <Stat label="Active teachers" value={String(k.teachers)} icon="id-card" tone="neutral" />
-        <Stat label="Operational staff" value={String(k.staff)} icon="school" tone="neutral" />
-        <Stat label="Sections" value={String(k.sections)} icon="book-open" tone="neutral" />
+        <Reveal delay={0}><Stat label="Enrolled students" value={String(k.students)} icon="users" tone="info" /></Reveal>
+        <Reveal delay={80}><Stat label="Active teachers" value={String(k.teachers)} icon="id-card" tone="neutral" /></Reveal>
+        <Reveal delay={160}><Stat label="Operational staff" value={String(k.staff)} icon="school" tone="neutral" /></Reveal>
+        <Reveal delay={240}><Stat label="Sections" value={String(k.sections)} icon="book-open" tone="neutral" /></Reveal>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Today's attendance */}
-        <Card>
+        <Card className="card-lift">
           <CardHeader>
             <CardTitle>Today&apos;s attendance — gate check-ins</CardTitle>
           </CardHeader>
@@ -105,7 +106,7 @@ function AdminDashboard({ data }: { data: DashboardSummary }) {
         </Card>
 
         {/* 7-day trend */}
-        <Card>
+        <Card className="card-lift">
           <CardHeader>
             <CardTitle>7-day attendance trend</CardTitle>
           </CardHeader>
@@ -135,7 +136,7 @@ function AdminDashboard({ data }: { data: DashboardSummary }) {
       </div>
 
       {/* Operational alerts */}
-      <Card>
+      <Card className="card-lift">
         <CardHeader>
           <CardTitle>Operational alerts</CardTitle>
         </CardHeader>
@@ -201,7 +202,7 @@ function AdminDashboard({ data }: { data: DashboardSummary }) {
       </Card>
 
       {/* At-risk students */}
-      <Card>
+      <Card className="card-lift">
         <CardHeader>
           <CardTitle>At-risk students — attendance under 75% this month</CardTitle>
         </CardHeader>

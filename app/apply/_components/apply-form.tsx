@@ -110,7 +110,7 @@ export function ApplyForm({ schoolName, grades }: ApplyFormProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
             <div>
               <label htmlFor="apply-dob" className="mb-1 block text-sm font-medium">
                 Date of birth
