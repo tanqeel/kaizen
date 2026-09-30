@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, EmptyState,
   FormGrid, Input, Select, Table, TBody, TD, TH, THead, Tabs, TabPanel, TRow, useConfirm,
+  type TabItem,
 } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { DAY_NAMES } from '@/lib/days';
@@ -67,13 +68,15 @@ async function api(path: string, method: string, body?: unknown): Promise<{ ok: 
 /* --------------------------------- component ------------------------------- */
 
 export function AcademicsClient({
-  canManage, initialGrades, initialSubjects, initialAllocations, teachers,
+  canManage, initialGrades, initialSubjects, initialAllocations, teachers, scopedSectionIds,
 }: {
   canManage: boolean;
   initialGrades: GradeLite[];
   initialSubjects: SubjectLite[];
   initialAllocations: AllocationLite[];
   teachers: TeacherLite[];
+  /** When set (student/parent), restrict views to these sections and hide management tabs. */
+  scopedSectionIds?: string[] | null;
 }) {
   const confirm = useConfirm();
   const [tab, setTab] = useState('structure');
@@ -231,6 +234,15 @@ export function AcademicsClient({
     void loadTimetable(id);
   };
 
+  // Scoped viewers (student/parent) land directly on their own section timetable.
+  const ttOptions = scopedSectionIds ? allSections.filter((s) => scopedSectionIds.includes(s.id)) : allSections;
+  useEffect(() => {
+    if (scopedSectionIds && scopedSectionIds.length > 0) {
+      pickSection(scopedSectionIds[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const maxPeriod = Math.max(6, ...slots.map((s) => s.periodNo));
   const slotAt = (day: number, period: number) => slots.find((s) => s.dayOfWeek === day && s.periodNo === period);
 
@@ -363,12 +375,16 @@ export function AcademicsClient({
       )}
 
       <Tabs
-        tabs={[
-          { id: 'structure', label: 'Structure', icon: 'school' },
-          { id: 'allocations', label: 'Allocations', icon: 'users' },
-          { id: 'timetable', label: 'Timetable', icon: 'calendar-days' },
-          { id: 'promotion', label: 'Promotion', icon: 'refresh-cw' },
-        ]}
+        tabs={
+          [
+            { id: 'structure', label: 'Structure', icon: 'school' },
+            { id: 'allocations', label: 'Allocations', icon: 'users' },
+            { id: 'timetable', label: 'Timetable', icon: 'calendar-days' },
+            // Promotion is a management workflow — never shown to scoped student/parent viewers.
+            ...(scopedSectionIds
+              ? []
+              : ([{ id: 'promotion', label: 'Promotion', icon: 'refresh-cw' }] as TabItem[])),
+          ]}
         value={tab}
         onChange={setTab}
         ariaLabel="Academics sections"
@@ -546,7 +562,7 @@ export function AcademicsClient({
               value={ttSectionId}
               onChange={(e) => pickSection(e.target.value)}
               placeholder="Select a section"
-              options={grades.flatMap((g) => g.sections.map((s) => ({ value: s.id, label: `${g.name} - ${s.name}` })))}
+              options={ttOptions.map((s) => ({ value: s.id, label: `${s.gradeName} - ${s.name}` }))}
             />
             {!ttSectionId ? (
               <EmptyState icon="calendar-days" title="Pick a section" guidance="Choose a section above to see its Monday–Friday timetable grid." />
