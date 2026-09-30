@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { createManyCompat } from './prisma-batch';
 
 /**
  * Attendance-domain helpers shared by pages and API routes.
@@ -64,15 +65,18 @@ export async function detectConflicts(dateStr: string): Promise<number> {
   const fresh = absentIds.filter((id) => !have.has(id));
   if (fresh.length === 0) return 0;
 
-  const result = await prisma.attendanceConflict.createMany({
-    data: fresh.map((studentId) => ({
+  // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+  // mode" on the Neon HTTP driver — insert individually in chunks instead.
+  const count = await createManyCompat(
+    (data) => prisma.attendanceConflict.create({ data }),
+    fresh.map((studentId) => ({
       date: dateStr,
       studentId,
       type: 'GATE_PRESENT_LECTURE_ABSENT' as const,
       status: 'OPEN' as const,
     })),
-  });
-  return result.count;
+  );
+  return count;
 }
 
 /**
