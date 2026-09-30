@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { academicScope } from '@/lib/academic-scope';
 
 /** GET /api/academics/subjects — list subjects with usage counts. */
 export async function GET() {
   const auth = await requireApiPermission('academics.view');
   if (auth instanceof NextResponse) return auth;
 
+  // Students/parents see only subjects taught in their own grade(s).
+  const scope = await academicScope(auth.id, auth.role);
+
   const subjects = await prisma.subject.findMany({
+    where: scope ? { allocations: { some: { gradeId: { in: scope.gradeIds } } } } : {},
     include: {
       _count: { select: { allocations: true, timetableSlots: true, examSchedules: true, periodAttendance: true } },
     },
