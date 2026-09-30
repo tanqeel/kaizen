@@ -307,58 +307,62 @@ export async function POST(req: Request) {
     .map((r) => ({ row: r.row, errors: r.errors }));
 
   try {
-    await prisma.$transaction(async (tx) => {
-      for (const r of valid) {
-        const p = r.preview;
-        const sectionRef = sectionMap.get(sectionKey(p.grade, p.section))!;
+    // NOTE: Neon HTTP adapter does not support $transaction — rows are
+    // written sequentially instead. Not atomic: on failure the response
+    // reports how many rows were created before the error.
+    for (const r of valid) {
+      const p = r.preview;
+      const sectionRef = sectionMap.get(sectionKey(p.grade, p.section))!;
 
-        let parentId: string | null = null;
-        if (p.parentName && p.parentPhone) {
-          parentId = parentIds.get(p.parentPhone) ?? null;
-          if (!parentId) {
-            const existing = await tx.parent.findFirst({
-              where: { phone: p.parentPhone },
+      let parentId: string | null = null;
+      if (p.parentName && p.parentPhone) {
+        parentId = parentIds.get(p.parentPhone) ?? null;
+        if (!parentId) {
+          const existing = await prisma.parent.findFirst({
+            where: { phone: p.parentPhone },
+            select: { id: true },
+          });
+          if (existing) {
+            parentId = existing.id;
+          } else {
+            const createdParent = await prisma.parent.create({
+              data: { name: p.parentName, phone: p.parentPhone },
               select: { id: true },
             });
-            if (existing) {
-              parentId = existing.id;
-            } else {
-              const createdParent = await tx.parent.create({
-                data: { name: p.parentName, phone: p.parentPhone },
-                select: { id: true },
-              });
-              parentId = createdParent.id;
-            }
-            parentIds.set(p.parentPhone, parentId);
+            parentId = createdParent.id;
           }
+          parentIds.set(p.parentPhone, parentId);
         }
-
-        const student = await tx.student.create({
-          data: {
-            admissionNo: p.admissionNo,
-            name: p.name,
-            dob: r.preview.dob ? parseDob(r.preview.dob)! : null,
-            gender: p.gender,
-            gradeId: sectionRef.gradeId,
-            sectionId: sectionRef.sectionId,
-            shiftId: shift.id,
-            sessionId: session.id,
-            isActive: true,
-          },
-          select: { id: true },
-        });
-
-        if (parentId) {
-          await tx.studentParent.create({
-            data: { studentId: student.id, parentId },
-          });
-        }
-        created += 1;
       }
-    });
+
+      const student = await prisma.student.create({
+        data: {
+          admissionNo: p.admissionNo,
+          name: p.name,
+          dob: r.preview.dob ? parseDob(r.preview.dob)! : null,
+          gender: p.gender,
+          gradeId: sectionRef.gradeId,
+          sectionId: sectionRef.sectionId,
+          shiftId: shift.id,
+          sessionId: session.id,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (parentId) {
+        await prisma.studentParent.create({
+          data: { studentId: student.id, parentId },
+        });
+      }
+      created += 1;
+    }
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? `Import failed: ${e.message}` : 'Import failed' },
+      {
+        error: e instanceof Error ? `Import failed: ${e.message}` : 'Import failed',
+        created,
+      },
       { status: 500 },
     );
   }

@@ -42,9 +42,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     ? `${request.title} — ${request.description}`.slice(0, 500)
     : request.title.slice(0, 500);
 
+  // NOTE: Neon HTTP adapter does not support $transaction — the two writes
+  // run sequentially. Idempotency: if a previous attempt created the expense
+  // but failed before marking the request approved, request.expenseId is set
+  // and we reuse it instead of booking a duplicate expense.
   const decidedAt = new Date();
-  const { expense, updated } = await prisma.$transaction(async (tx) => {
-    const expense = await tx.expense.create({
+  let expenseId = request.expenseId as string | null;
+  if (!expenseId) {
+    const expense = await prisma.expense.create({
       data: {
         schoolId: sres.schoolId,
         date: decidedAt,
@@ -55,22 +60,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         addedById: user.id,
       },
     });
-    const updated = await tx.expenseRequest.update({
-      where: { id: request.id },
-      data: {
-        status: 'APPROVED',
-        decidedById: user.id,
-        decidedAt,
-        sourceId: source.id,
-        expenseId: expense.id,
-      },
-    });
-    return { expense, updated };
+    expenseId = expense.id;
+  }
+  const updated = await prisma.expenseRequest.update({
+    where: { id: request.id },
+    data: {
+      status: 'APPROVED',
+      decidedById: user.id,
+      decidedAt,
+      sourceId: source.id,
+      expenseId,
+    },
   });
 
   return NextResponse.json({
     ok: true,
     request: { id: updated.id, status: updated.status },
-    expense: { id: expense.id, amount: expense.amount },
+    expense: { id: expenseId, amount: request.amount },
   });
 }

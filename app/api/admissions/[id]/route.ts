@@ -79,59 +79,61 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const year = new Date().getFullYear();
 
+  // NOTE: Neon HTTP adapter does not support $transaction — the enrolment
+  // steps run sequentially instead. The P2002 retry only fires before the
+  // student row is created; retrying after that would enrol a duplicate.
   for (let attempt = 0; attempt < MAX_NO_ATTEMPTS; attempt++) {
+    let studentCreated = false;
     try {
-      const result = await prisma.$transaction(async (tx) => {
-        const seq = (await tx.student.count()) + 1;
-        const admissionNo = `KZN-${year}-${String(seq).padStart(4, '0')}`;
+      const seq = (await prisma.student.count()) + 1;
+      const admissionNo = `KZN-${year}-${String(seq).padStart(4, '0')}`;
 
-        let parent = await tx.parent.findFirst({
-          where: { phone: application.parentPhone },
-          select: { id: true },
-        });
-        if (!parent) {
-          parent = await tx.parent.create({
-            data: {
-              name: application.parentName,
-              phone: application.parentPhone,
-              address: application.address,
-            },
-            select: { id: true },
-          });
-        }
-
-        const student = await tx.student.create({
+      let parent = await prisma.parent.findFirst({
+        where: { phone: application.parentPhone },
+        select: { id: true },
+      });
+      if (!parent) {
+        parent = await prisma.parent.create({
           data: {
-            admissionNo,
-            name: application.name,
-            dob: application.dob,
-            gender: application.gender,
-            gradeId: application.gradeId,
-            sectionId: section.id,
-            shiftId: shift.id,
-            sessionId: session.id,
+            name: application.parentName,
+            phone: application.parentPhone,
             address: application.address,
-            isActive: true,
           },
           select: { id: true },
         });
+      }
 
-        await tx.studentParent.create({
-          data: { studentId: student.id, parentId: parent.id },
-        });
+      const student = await prisma.student.create({
+        data: {
+          admissionNo,
+          name: application.name,
+          dob: application.dob,
+          gender: application.gender,
+          gradeId: application.gradeId,
+          sectionId: section.id,
+          shiftId: shift.id,
+          sessionId: session.id,
+          address: application.address,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      studentCreated = true;
 
-        await tx.admissionApplication.update({
-          where: { id },
-          data: { status: 'APPROVED', decidedById: user.id, decidedAt: new Date() },
-        });
-
-        return admissionNo;
+      await prisma.studentParent.create({
+        data: { studentId: student.id, parentId: parent.id },
       });
 
-      return NextResponse.json({ ok: true, admissionNo: result });
+      await prisma.admissionApplication.update({
+        where: { id },
+        data: { status: 'APPROVED', decidedById: user.id, decidedAt: new Date() },
+      });
+
+      return NextResponse.json({ ok: true, admissionNo });
     } catch (err) {
       // Admission-number race: another enrolment claimed the same number.
       if (
+        !studentCreated &&
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002' &&
         attempt < MAX_NO_ATTEMPTS - 1

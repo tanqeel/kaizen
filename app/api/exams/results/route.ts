@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
 import { teacherGradeIds, parentChildIds, ownStudentId } from '@/lib/exams';
 import { invalidateDashboard } from '@/lib/dashboard';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 /**
  * Scope the student list of a schedule's grade to the viewer.
@@ -141,14 +142,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Some rows failed validation — nothing was saved', errors }, { status: 400 });
   }
 
-  await prisma.$transaction(
-    clean.map((r) =>
+  // Neon HTTP adapter does not support $transaction — upserts are idempotent
+  // (same unique key), so chunked sequential writes are safely retryable.
+  await createManyCompat(
+    (r) =>
       prisma.examResult.upsert({
         where: { examScheduleId_studentId: { examScheduleId: scheduleId, studentId: r.studentId } },
         update: { obtainedMarks: r.obtainedMarks, remarks: r.remarks },
-        create: { examScheduleId: scheduleId, studentId: r.studentId, obtainedMarks: r.obtainedMarks, remarks: r.remarks },
+        create: {
+          examScheduleId: scheduleId,
+          studentId: r.studentId,
+          obtainedMarks: r.obtainedMarks,
+          remarks: r.remarks,
+        },
       }),
-    ),
+    clean,
   );
   invalidateDashboard();
   return NextResponse.json({ ok: true, saved: clean.length });

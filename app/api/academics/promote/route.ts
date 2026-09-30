@@ -195,39 +195,63 @@ export async function POST(req: Request) {
   const graduates = computed.plan.filter((p) => p.action === 'graduate');
 
   try {
-    const result = await prisma.$transaction(
-      async (tx) => {
-        const newSession = await tx.academicSession.create({
-          data: { schoolId, name: newSessionName, term, startDate, endDate, isCurrent: true },
-          select: { id: true },
-        });
-        await tx.academicSession.update({
-          where: { id: computed.current.id },
-          data: { isCurrent: false },
-        });
+    // NOTE: the Neon HTTP adapter does not support interactive $transaction —
+    // these steps run sequentially instead. Not atomic: on failure the
+    // response reports how far the promotion got so an admin can reconcile.
+    // The session-name duplicate guard above keeps a retry from double-running.
+    const newSession = await prisma.academicSession.create({
+      data: { schoolId, name: newSessionName, term, startDate, endDate, isCurrent: true },
+      select: { id: true },
+    });
+    await prisma.academicSession.update({
+      where: { id: computed.current.id },
+      data: { isCurrent: false },
+    });
+
+    let promoted = 0;
+    let graduated = 0;
+    try {
+      for (let i = 0; i < promotes.length; i += 20) {
+        const chunk = promotes.slice(i, i + 20);
         await Promise.all(
-          promotes.map((p) =>
-            tx.student.update({
-              where: { id: p.id },
+          chunk.map((pr) =>
+            prisma.student.update({
+              where: { id: pr.id },
               // sessionId moves to the new session so fees/vouchers/attendance
               // scoping (which filters by current session) keeps working.
-              data: { gradeId: p.toGradeId!, sectionId: p.toSectionId!, sessionId: newSession.id },
+              data: { gradeId: pr.toGradeId!, sectionId: pr.toSectionId!, sessionId: newSession.id },
             }),
           ),
         );
+        promoted += chunk.length;
+      }
+      for (let i = 0; i < graduates.length; i += 20) {
+        const chunk = graduates.slice(i, i + 20);
         await Promise.all(
-          graduates.map((p) => tx.student.update({ where: { id: p.id }, data: { isActive: false } })),
+          chunk.map((g) => prisma.student.update({ where: { id: g.id }, data: { isActive: false } })),
         );
-        return {
-          promoted: promotes.length,
-          graduated: graduates.length,
-          stayed: computed.plan.length - promotes.length - graduates.length,
-          newSessionId: newSession.id,
-        };
-      },
-      { timeout: 30000 },
-    );
-    return NextResponse.json(result);
+        graduated += chunk.length;
+      }
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error: e instanceof Error ? `Promotion partially completed: ${e.message}` : 'Promotion partially completed',
+          partial: {
+            promoted,
+            graduated,
+            of: { promoted: promotes.length, graduated: graduates.length },
+            newSessionId: newSession.id,
+          },
+        },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({
+      promoted,
+      graduated,
+      stayed: computed.plan.length - promotes.length - graduates.length,
+      newSessionId: newSession.id,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Promotion failed' },
