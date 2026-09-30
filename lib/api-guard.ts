@@ -10,6 +10,15 @@ import { can, type Permission } from './rbac';
  */
 export async function requireApiPermission(perm: Permission): Promise<SafeUser | NextResponse> {
   const user = await requireUser();
+  // Staff: intersect with job-type permissions (see lib/staff-permissions.ts).
+  if (user.role === 'STAFF') {
+    const { canStaff } = await import('./staff-permissions');
+    if (await canStaff(user.id, user.role, perm)) return user;
+    return NextResponse.json(
+      { error: 'Access denied: your job role does not include this permission.' },
+      { status: 403 },
+    );
+  }
   if (!can(user.role, perm)) {
     return NextResponse.json({ error: `Forbidden: ${user.role} lacks ${perm}` }, { status: 403 });
   }

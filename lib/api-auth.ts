@@ -18,6 +18,25 @@ export async function apiUser(perm: Permission | Permission[]): Promise<ApiAuth>
   const user = await getSessionUser();
   if (!user) return { error: NextResponse.json({ error: 'Unauthenticated' }, { status: 401 }) };
   const perms = Array.isArray(perm) ? perm : [perm];
+
+  // Staff: intersect the role permission with job-type permissions, so a
+  // security guard cannot reach accountant-only APIs just because both are
+  // "staff". Non-staff roles use the standard role check.
+  if (user.role === 'STAFF') {
+    const { canStaff } = await import('./staff-permissions');
+    for (const p of perms) {
+      if (await canStaff(user.id, user.role, p)) {
+        return { user };
+      }
+    }
+    return {
+      error: NextResponse.json(
+        { error: 'Access denied: your job role does not include this permission.' },
+        { status: 403 },
+      ),
+    };
+  }
+
   if (!perms.some((p) => can(user.role, p))) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
@@ -25,10 +44,8 @@ export async function apiUser(perm: Permission | Permission[]): Promise<ApiAuth>
 }
 
 /**
- * Staff-type-aware permission check. For STAFF role users, intersects the
- * role permission with their job-type permissions (e.g. SECURITY staff
- * cannot access finance even though STAFF role nominally can).
- * For all other roles, identical to apiUser.
+ * Alias of apiUser. Staff-type-aware since apiUser now enforces job-type
+ * permissions for STAFF users directly. Kept for existing imports.
  */
 export async function apiUserStrict(perm: Permission | Permission[]): Promise<ApiAuth> {
   const user = await getSessionUser();

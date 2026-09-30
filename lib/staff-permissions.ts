@@ -84,7 +84,10 @@ export async function canStaff(
     where: { userId },
     select: { staffType: true },
   });
-  if (!staff) return false;
+  // Staff without a staff record (e.g. newly created): fall back to
+  // role-level permissions so the account is never fully locked out.
+  // Mirrors the sidebar fallback in app/(app)/layout.tsx.
+  if (!staff) return can(role, perm);
 
   return staffTypeAllows(staff.staffType, role, perm);
 }

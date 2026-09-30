@@ -62,7 +62,7 @@ const MATRIX: Record<Permission, Role[]> = {
   'academics.view': ALL,
   'exams.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER'],
   'exams.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT'],
-  'finance.manage': ADMIN_OPS,
+  'finance.manage': [...ADMIN_OPS, 'STAFF'],
   'finance.view': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF', 'PARENT'],
   'comms.manage': ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN', 'STAFF'],
   'staff.manage': ADMIN_OPS,
