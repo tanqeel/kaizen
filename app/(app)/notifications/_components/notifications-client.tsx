@@ -63,6 +63,26 @@ export function NotificationsClient() {
     }
   };
 
+  const markAllRead = async () => {
+    try {
+      const res = await fetch('/api/notifications/read-all', { method: 'POST' });
+      if (!res.ok) throw new Error();
+      await load();
+    } catch {
+      setError('Could not mark notifications as read. Please try again.');
+    }
+  };
+
+  const remove = async (id: string) => {
+    try {
+      const res = await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      await load();
+    } catch {
+      setError('Could not delete the notification. Please try again.');
+    }
+  };
+
   const visible = tab === 'unread' ? items.filter((n) => n.readAt === null) : items;
 
   return (
@@ -73,6 +93,13 @@ export function NotificationsClient() {
           unreadCount > 0
             ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}.`
             : 'Your latest school updates.'
+        }
+        actions={
+          unreadCount > 0 ? (
+            <Button variant="secondary" size="sm" onClick={markAllRead}>
+              <Icon name="check" size={14} /> Mark all read
+            </Button>
+          ) : undefined
         }
       />
 
@@ -168,6 +195,16 @@ export function NotificationsClient() {
                         {marking === n.id ? 'Marking…' : 'Mark read'}
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remove(n.id)}
+                      aria-label="Delete notification"
+                      title="Delete notification"
+                      className="shrink-0 self-start text-slate-400 hover:text-rose-600 sm:self-center"
+                    >
+                      <Icon name="trash" size={14} />
+                    </Button>
                   </CardContent>
                 </Card>
               </li>
