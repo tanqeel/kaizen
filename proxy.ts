@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register', '/apply', '/activate', '/api/auth/login', '/api/auth/activate', '/api/health', '/api/admissions/apply', '/api/admissions/grades', '/api/register', '/offline', '/manifest.webmanifest'];
+const PUBLIC_PATHS = ['/login', '/forgot-password', '/register', '/apply', '/activate', '/api/auth/login', '/api/auth/forgot-password', '/api/auth/activate', '/api/health', '/api/admissions/apply', '/api/admissions/grades', '/api/register', '/offline', '/manifest.webmanifest'];
 
 /**
  * Optimistic auth check: redirects unauthenticated page/API traffic to /login.
