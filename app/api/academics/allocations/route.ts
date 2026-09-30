@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiPermission } from '@/lib/api-guard';
+import { academicScope } from '@/lib/academic-scope';
 
 /** GET /api/academics/allocations — subject → grade → teacher allocations. */
 export async function GET() {
   const auth = await requireApiPermission('academics.view');
   if (auth instanceof NextResponse) return auth;
 
+  // Students/parents see only allocations for their own grade(s).
+  const scope = await academicScope(auth.id, auth.role);
+
   const allocations = await prisma.subjectAllocation.findMany({
+    where: scope ? { gradeId: { in: scope.gradeIds } } : {},
     include: {
       subject: true,
       grade: true,
