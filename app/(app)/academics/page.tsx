@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth';
 import { can, requirePagePermission } from '@/lib/rbac';
 import { prisma } from '@/lib/db';
+import { academicScope } from '@/lib/academic-scope';
 import { ConfirmProvider, PageHeader } from '@/components/ui';
 import { AcademicsClient } from './AcademicsClient';
 
@@ -9,10 +10,17 @@ export default async function AcademicsPage() {
   requirePagePermission(user.role, 'academics.view');
   const canManage = can(user.role, 'academics.manage');
 
+  // Students see only their own grade/section; parents only their children's.
+  const scope = await academicScope(user.id, user.role);
+  const gradeFilter = scope ? { id: { in: scope.gradeIds } } : {};
+  const sectionFilter = scope ? { id: { in: scope.sectionIds } } : {};
+
   const [grades, subjects, allocations, teachers] = await Promise.all([
     prisma.grade.findMany({
+      where: gradeFilter,
       include: {
         sections: {
+          where: sectionFilter,
           include: {
             classTeacher: { include: { user: true } },
             _count: { select: { students: true, timetableSlots: true } },
@@ -23,31 +31,44 @@ export default async function AcademicsPage() {
       orderBy: { level: 'asc' },
     }),
     prisma.subject.findMany({
+      where: scope
+        ? { allocations: { some: { gradeId: { in: scope.gradeIds } } } }
+        : {},
       include: {
         _count: { select: { allocations: true, timetableSlots: true, examSchedules: true, periodAttendance: true } },
       },
       orderBy: { name: 'asc' },
     }),
     prisma.subjectAllocation.findMany({
+      where: scope ? { gradeId: { in: scope.gradeIds } } : {},
       include: { subject: true, grade: true, teacher: { include: { user: true } } },
       orderBy: [{ grade: { level: 'asc' } }, { subject: { name: 'asc' } }],
     }),
     prisma.teacher.findMany({
-      where: { isActive: true },
+      where: scope
+        ? { isActive: true, allocations: { some: { gradeId: { in: scope.gradeIds } } } }
+        : { isActive: true },
       include: { user: true },
       orderBy: { user: { name: 'asc' } },
     }),
   ]);
 
+  const scopedSectionIds = scope?.sectionIds ?? null;
+
   return (
     <div>
       <PageHeader
         title="Academics"
-        subtitle="Grades, sections, subjects, teacher allocations and the weekly timetable."
+        subtitle={
+          scope
+            ? 'Your classes, subjects, teachers and weekly timetable.'
+            : 'Grades, sections, subjects, teacher allocations and the weekly timetable.'
+        }
       />
       <ConfirmProvider>
         <AcademicsClient
           canManage={canManage}
+          scopedSectionIds={scopedSectionIds}
           initialGrades={grades.map((g) => ({
             id: g.id,
             level: g.level,
