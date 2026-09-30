@@ -10,6 +10,11 @@
  *
  * NOTE: unlike createMany, this is not atomic — if a chunk throws, earlier
  * rows stay inserted. Callers that need best-effort semantics should catch.
+ *
+ * Known affected call sites (all fixed 2026-09-30): notification fan-out in
+ * POST /api/comms/announcements, admin notifications in forgot-password,
+ * biometric arrival notifications, payroll generation, timetable copy,
+ * AI chat logging, attendance conflict detection.
  */
 export async function createManyCompat<T>(
   insert: (data: T) => Promise<unknown>,
