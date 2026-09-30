@@ -191,7 +191,7 @@ export function UsersClient({ canManage }: { canManage: boolean }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{u.name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs break-all text-slate-500">
                       {u.kaizenId ?? 'No KAIZEN ID yet'} · {u.email}
                       {u.phone ? ` · ${u.phone}` : ''}
                     </p>

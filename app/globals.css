@@ -35,9 +35,38 @@
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-spin-slow: spin 1s linear infinite;
 
+  /* Premium motion tokens (staging) — all neutralized under
+     prefers-reduced-motion by the guard at the bottom of this file. */
+  --animate-fade-in: fade-in 0.35s ease-out both;
+  --animate-fade-up: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-page-in: page-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float-slow: float-y 7s ease-in-out infinite;
+  --animate-float-slower: float-y 11s ease-in-out infinite;
+
   @keyframes shimmer {
     from { background-position: -400px 0; }
     to { background-position: 400px 0; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float-y {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
   }
 }
 
@@ -108,6 +137,46 @@ body {
   );
   background-size: 800px 100%;
   animation: var(--animate-shimmer);
+}
+
+/* Scroll-reveal: starts hidden+lifted, .is-visible (added by <Reveal>)
+   eases it in. Delay comes from inline transition-delay. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Opt-in premium card depth: subtle lift + deeper shadow on hover.
+   Apply to clickable/highlight cards only — not every card on a page. */
+.card-lift {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+}
+
+/* Brand gradient text for hero/heading accents */
+.text-gradient-brand {
+  background: linear-gradient(120deg, var(--color-brand-600), var(--color-brand-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dark .text-gradient-brand {
+  background: linear-gradient(120deg, var(--color-brand-300), var(--color-brand-500));
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 /* Thin, theme-aware scrollbars for drawers/panels */

@@ -25,8 +25,9 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'md' | 'sm' | 'icon';
 
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors select-none ' +
-  'disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold select-none ' +
+  'transition-all duration-150 ease-out active:scale-[0.98] ' +
+  'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 cursor-pointer';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
@@ -440,7 +441,7 @@ export function Tabs({ tabs, value, onChange, className, ariaLabel = 'Tabs' }: T
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cx(
-              'inline-flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              'inline-flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 active:scale-[0.97]',
               active
                 ? 'bg-white text-brand-700 shadow-sm dark:bg-slate-800 dark:text-brand-300'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
@@ -468,7 +469,7 @@ export function TabPanel({
 }) {
   if (!active) return null;
   return (
-    <div role="tabpanel" id={`tabpanel-${id}`} aria-labelledby={`tab-${id}`} className={className}>
+    <div key={id} role="tabpanel" id={`tabpanel-${id}`} aria-labelledby={`tab-${id}`} className={`animate-fade-in ${className ?? ''}`}>
       {children}
     </div>
   );
@@ -523,7 +524,7 @@ export function Dialog({ open, onClose, title, children, footer, size = 'md' }: 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-6"
+      className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-6"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -536,7 +537,7 @@ export function Dialog({ open, onClose, title, children, footer, size = 'md' }: 
         aria-label={title}
         tabIndex={-1}
         className={cx(
-          'flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-pop)]',
+          'animate-scale-in flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-pop)]',
           'sm:rounded-2xl dark:bg-slate-900',
           DIALOG_SIZES[size],
         )}

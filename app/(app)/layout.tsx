@@ -6,6 +6,7 @@ import { staffTypeAllows } from '@/lib/staff-permissions';
 import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { PageTransition } from '@/components/page-transition';
 
 /**
  * School header info (name + current academic session label). Changes
@@ -74,7 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           sessionLabel={sessionLabel}
         />
         <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
     </div>

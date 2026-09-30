@@ -97,7 +97,7 @@ export function RegistrationsClient() {
                 <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                   <div><dt className="text-xs text-slate-500">Account type</dt><dd className="font-medium">{r.accountType}</dd></div>
                   <div><dt className="text-xs text-slate-500">Phone</dt><dd className="font-medium">{r.phone}</dd></div>
-                  {r.email && <div><dt className="text-xs text-slate-500">Email</dt><dd className="font-medium">{r.email}</dd></div>}
+                  {r.email && <div><dt className="text-xs text-slate-500">Email</dt><dd className="font-medium break-all">{r.email}</dd></div>}
                   {r.admissionNo && <div><dt className="text-xs text-slate-500">Admission No</dt><dd className="font-medium">{r.admissionNo}</dd></div>}
                   {r.guardianName && <div><dt className="text-xs text-slate-500">Guardian</dt><dd className="font-medium">{r.guardianName}{r.guardianPhone ? ` · ${r.guardianPhone}` : ''}</dd></div>}
                   {r.notes && <div className="col-span-2"><dt className="text-xs text-slate-500">Notes</dt><dd>{r.notes}</dd></div>}

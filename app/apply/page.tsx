@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { ApplyForm } from './_components/apply-form';
+import { Reveal } from '@/components/reveal';
 
 // Public page with direct DB reads and no session — must render per-request,
 // never statically prerender at build time (no live DATABASE_URL then).
@@ -21,13 +22,15 @@ export default async function ApplyPage() {
 
   return (
     <main id="main-content" className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
-      <div className="mb-6 text-center">
+      <Reveal className="mb-6 text-center">
         <p className="text-2xl font-bold text-slate-900 dark:text-white">{school?.name ?? 'Kaizen'}</p>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Online admission application
         </p>
-      </div>
-      <ApplyForm schoolName={school?.name ?? ''} grades={grades} />
+      </Reveal>
+      <Reveal delay={120}>
+        <ApplyForm schoolName={school?.name ?? ''} grades={grades} />
+      </Reveal>
     </main>
   );
 }
