@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { can, NAV_ITEMS } from '@/lib/rbac';
+import { staffTypeAllows } from '@/lib/staff-permissions';
 import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
@@ -41,7 +42,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { schoolName, sessionLabel } = await getSchoolHeader();
 
-  const nav = NAV_ITEMS.filter((item) => can(user.role, item.perm) && !item.hideFor?.includes(user.role));
+  // Staff-type-aware nav: a gatekeeper or peon must not see Fees /
+  // Academics / Students / Admissions links their job role cannot use.
+  // One staffMember lookup per request; the per-item check is pure.
+  let staffType: import('@prisma/client').StaffType | null = null;
+  if (user.role === 'STAFF') {
+    const rec = await prisma.staffMember.findUnique({
+      where: { userId: user.id },
+      select: { staffType: true },
+    });
+    staffType = rec?.staffType ?? null;
+  }
+  const nav = NAV_ITEMS.filter((item) => {
+    if (item.hideFor?.includes(user.role)) return false;
+    if (user.role === 'STAFF') {
+      // Staff without a staff record (e.g. newly created): fall back to
+      // role-level permissions so the sidebar is never blank.
+      if (staffType === null) return can(user.role, item.perm);
+      return staffTypeAllows(staffType, user.role, item.perm);
+    }
+    return can(user.role, item.perm);
+  });
 
   return (
     <div className="min-h-dvh">
