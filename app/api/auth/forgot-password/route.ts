@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createActivationToken } from '@/lib/activation';
 import { auditLog } from '@/lib/audit';
+import { createManyCompat } from '@/lib/prisma-batch';
 
 /**
  * POST /api/auth/forgot-password { email }
@@ -60,15 +61,18 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     const message = `${user.name} (${user.kaizenId ?? 'no KAIZEN ID'}) requested a password reset. Open Users to issue their one-time reset link.`;
-    await prisma.notificationLog.createMany({
-      data: admins.map((a) => ({
+    // NOTE: prisma.createMany throws "Transactions are not supported in HTTP
+    // mode" on the Neon HTTP driver — insert individually in chunks instead.
+    await createManyCompat(
+      (data) => prisma.notificationLog.create({ data }),
+      admins.map((a) => ({
         userId: a.id,
         type: 'ANNOUNCEMENT' as const,
         channel: 'IN_APP' as const,
         message,
         status: 'SENT' as const,
       })),
-    });
+    );
 
     const school = await prisma.school.findFirst({ select: { id: true } });
     if (school) {
